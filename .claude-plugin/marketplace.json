@@ -1,0 +1,74 @@
+{
+  "name": "javamark-claude-plugins",
+  "description": "Personal plugin marketplace for AI-assisted software development and Spec-Driven Development",
+  "owner": {
+    "name": "Mark",
+    "email": "mark@example.de"
+  },
+  "plugins": [
+    {
+      "name": "sdd-toolkit",
+      "version": "1.0.0",
+      "description": "Spec-Driven Development Toolkit: Create specifications, derive features, and use coworker mode for pair programming with Claude. Use this plugin for SDD workflows, spec creation, and the /coworker mode.",
+      "source": "./plugins/sdd-toolkit",
+      "category": "development",
+      "tags": ["sdd", "specs", "coworker", "methodology"]
+    },
+    {
+      "name": "java-scaffold",
+      "version": "1.0.0",
+      "description": "Generate Quarkus/Java project scaffolds: BCE architecture, Panache entities, RESTEasy endpoints, LangChain4j services. Use this plugin when creating new Quarkus modules or features.",
+      "source": "./plugins/java-scaffold",
+      "category": "development",
+      "tags": ["java", "quarkus", "scaffold", "bce"]
+    },
+    {
+      "name": "openapi-toolkit",
+      "version": "1.0.0",
+      "description": "Generate and validate OpenAPI specifications. Creates API documentation from code or specs. Use this plugin for REST API design and documentation.",
+      "source": "./plugins/openapi-toolkit",
+      "category": "development",
+      "tags": ["openapi", "rest", "api", "swagger"]
+    },
+    {
+      "name": "review-toolkit",
+      "version": "1.0.0",
+      "description": "Code reviews with specialized agents for architecture, security, test coverage, and Quarkus best practices. Use this plugin for systematic code quality checks.",
+      "source": "./plugins/review-toolkit",
+      "category": "quality",
+      "tags": ["review", "quality", "security", "architecture"]
+    },
+    {
+      "name": "doc-toolkit",
+      "version": "1.0.0",
+      "description": "Create documentation and blog posts: Technical docs, ADRs, and blog articles from Java projects. Use this plugin for documentation tasks and content creation.",
+      "source": "./plugins/doc-toolkit",
+      "category": "documentation",
+      "tags": ["docs", "blog", "adr", "documentation"]
+    },
+    {
+      "name": "frontend-toolkit",
+      "version": "1.0.0",
+      "description": "Frontend development with TailAdmin, Alpine.js, and Quarkus templates. Build prototypes, dashboards, and forms. Use this plugin for UI development.",
+      "source": "./plugins/frontend-toolkit",
+      "category": "development",
+      "tags": ["frontend", "tailadmin", "alpine", "prototyping"]
+    },
+    {
+      "name": "infografik",
+      "version": "1.0.0",
+      "description": "Create professional infographics as PNG/PDF using Python (matplotlib, PIL). Data visualization, process overviews, and statistics for presentations and reports.",
+      "source": "./plugins/infografik",
+      "category": "visualization",
+      "tags": ["infografik", "visualization", "charts", "data"]
+    },
+    {
+      "name": "token-budget",
+      "version": "1.0.0",
+      "description": "Plan, implement, and monitor token budgets for LLM applications. Context window management, cost tracking with alerts, and rate limiting with priority queues for LangChain4j/Quarkus.",
+      "source": "./plugins/token-budget",
+      "category": "development",
+      "tags": ["tokens", "budget", "llm", "rate-limiting", "cost-tracking", "langchain4j"]
+    }
+  ]
+}

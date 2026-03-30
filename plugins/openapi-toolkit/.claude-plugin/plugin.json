@@ -1,0 +1,7 @@
+{
+  "name": "openapi-toolkit",
+  "version": "1.0.0",
+  "description": "Generate and validate OpenAPI specifications for Quarkus REST APIs.",
+  "author": { "name": "Mark" },
+  "components": { "skills": ["skills/"] }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "sdd-toolkit",
+  "version": "1.0.0",
+  "description": "Spec-Driven Development Toolkit: Create domain specifications, derive features, and use coworker mode for pair working with Claude.",
+  "author": {
+    "name": "Mark"
+  },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "agents": ["agents/"]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "doc-toolkit",
+  "version": "1.0.0",
+  "description": "Create technical documentation and blog posts from Java/Quarkus projects.",
+  "author": { "name": "Mark" },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "agents": ["agents/"]
+  }
+}

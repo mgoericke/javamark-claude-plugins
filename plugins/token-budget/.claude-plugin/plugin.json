@@ -1,0 +1,11 @@
+{
+  "name": "token-budget",
+  "version": "1.0.0",
+  "description": "Plan, implement, and monitor token budgets for LLM-based applications. Context window management, cost tracking, and rate limiting for LangChain4j/Quarkus.",
+  "author": { "name": "Mark" },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "references": ["references/"]
+  }
+}

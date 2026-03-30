@@ -1,0 +1,11 @@
+{
+  "name": "frontend-toolkit",
+  "version": "1.0.0",
+  "description": "Frontend development for web portals with TailAdmin, Alpine.js and Quarkus.",
+  "author": { "name": "Mark" },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "agents": ["agents/"]
+  }
+}

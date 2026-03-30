@@ -1,0 +1,13 @@
+{
+  "name": "PLUGIN_NAME",
+  "version": "1.0.0",
+  "description": "PLUGIN_DESCRIPTION",
+  "author": {
+    "name": "Mark",
+    "email": "mark@example.de"
+  },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"]
+  }
+}

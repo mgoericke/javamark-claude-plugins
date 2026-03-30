@@ -1,0 +1,10 @@
+{
+  "name": "infografik",
+  "version": "1.0.0",
+  "description": "Create professional infographics as PNG/PDF with Python.",
+  "author": { "name": "Mark" },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"]
+  }
+}

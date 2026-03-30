@@ -1,0 +1,11 @@
+{
+  "name": "review-toolkit",
+  "version": "1.0.0",
+  "description": "Systematic code reviews with specialized agents for architecture, security, performance, and Quarkus best practices.",
+  "author": { "name": "Mark" },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "agents": ["agents/"]
+  }
+}

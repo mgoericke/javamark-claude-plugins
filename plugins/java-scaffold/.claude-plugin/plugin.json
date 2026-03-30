@@ -1,0 +1,7 @@
+{
+  "name": "java-scaffold",
+  "version": "1.0.0",
+  "description": "Generate Quarkus/Java project scaffolds with BCE architecture, Panache, RESTEasy Reactive, and LangChain4j.",
+  "author": { "name": "Mark" },
+  "components": { "skills": ["skills/"], "commands": ["commands/"] }
+}
