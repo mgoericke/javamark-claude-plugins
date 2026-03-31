@@ -8,10 +8,10 @@ Plugin marketplace for Claude Code — hosted on GitHub, installable via the `/p
 
 ```bash
 # Via HTTPS (with GitHub PAT)
-/plugin marketplace add https://github.com/mgoericke/javamark-claude-skills.git
+/plugin marketplace add https://github.com/mgoericke/javamark-claude-plugins.git
 
 # Via SSH
-/plugin marketplace add git@github.com:mgoericke/javamark-claude-skills.git
+/plugin marketplace add git@github.com:mgoericke/javamark-claude-plugins.git
 ```
 
 > **Prerequisite**: `git clone` must work for the repository (SSH key or PAT configured).
