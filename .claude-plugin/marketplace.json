@@ -69,6 +69,14 @@
       "source": "./plugins/token-budget",
       "category": "development",
       "tags": ["tokens", "budget", "llm", "rate-limiting", "cost-tracking", "langchain4j"]
+    },
+    {
+      "name": "wiki-llm",
+      "version": "1.0.0",
+      "description": "Personal LLM-powered knowledge base — plain Markdown, Git-versioned, searchable and linkable by Claude Code. Inspired by Karpathy's Wiki-LLM concept. Use this plugin to search, save, connect, and maintain a personal wiki across all projects.",
+      "source": "./plugins/wiki-llm",
+      "category": "knowledge",
+      "tags": ["wiki", "knowledge-management", "markdown", "personal", "notes"]
     }
   ]
 }

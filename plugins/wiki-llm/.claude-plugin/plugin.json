@@ -1,0 +1,13 @@
+{
+  "name": "wiki-llm",
+  "version": "1.0.0",
+  "description": "Personal LLM-powered knowledge base — plain Markdown, Git-versioned, searchable and linkable by Claude Code. Inspired by Karpathy's Wiki-LLM concept.",
+  "author": {
+    "name": "Mark"
+  },
+  "components": {
+    "skills": ["skills/"],
+    "commands": ["commands/"],
+    "references": ["references/"]
+  }
+}
