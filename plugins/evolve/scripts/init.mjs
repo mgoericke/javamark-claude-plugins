@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { applyDefaults, writeConfig } from './lib/config.mjs';
-import { isClean } from './lib/git.mjs';
+import { isClean, commitAll } from './lib/git.mjs';
 
 export function detectStack(repo) {
   const has = (f) => fs.existsSync(path.join(repo, f));
@@ -67,6 +67,10 @@ function main() {
     console.error('usage: init.mjs <repo> --run <name> --mode <invent|modernize>');
     process.exit(2);
   }
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(run)) {
+    console.error(`evolve init: invalid --run name '${run}' (allowed: letters, digits, '.', '_', '-'; must start with a letter or digit)`);
+    process.exit(2);
+  }
   if (!isClean(repo)) {
     console.error('evolve init: refusing to run, the working tree has uncommitted changes');
     process.exit(1);
@@ -78,6 +82,7 @@ function main() {
   execFileSync('git', ['checkout', '-b', config.branch], { cwd: repo, stdio: 'pipe' });
   writeConfig(repo, config);
   ensureGitignore(repo);
+  commitAll(repo, `evolve: start run ${run}`);
   console.log(`branch: ${config.branch}`);
   console.log(`config: ${path.join(repo, '.evolve', 'evolve.json')}`);
   console.log(marker);

@@ -20,7 +20,9 @@ export function commitAll(repo, message) {
 }
 
 export function tag(repo, name) {
-  if (run(repo, 'tag', '--list', name).trim()) throw new Error(`tag ${name} already exists`);
+  let exists = true;
+  try { run(repo, 'rev-parse', '-q', '--verify', `refs/tags/${name}`); } catch { exists = false; }
+  if (exists) throw new Error(`tag ${name} already exists`);
   run(repo, 'tag', name);
 }
 

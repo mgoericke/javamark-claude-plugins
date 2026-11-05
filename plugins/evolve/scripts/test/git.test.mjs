@@ -24,6 +24,8 @@ test('git.tag refuses an existing tag', () => {
   try {
     git.tag(repo, 'x');
     assert.throws(() => git.tag(repo, 'x'), /exists/);
+    git.tag(repo, 'xy'); // 'x*' glob must not make other names collide
+    assert.doesNotThrow(() => git.tag(repo, 'x2'));
   } finally { rm(repo); }
 });
 

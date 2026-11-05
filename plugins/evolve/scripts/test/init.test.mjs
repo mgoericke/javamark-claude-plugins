@@ -48,6 +48,9 @@ test('init detects npm scripts', () => {
     assert.match(c.marker, /^evolve-run:t:[0-9a-f]{8}$/);
     assert.ok(r.stdout.includes(c.marker));
     assert.equal(execFileSync('git', ['branch', '--show-current'], { cwd: repo, encoding: 'utf8' }).trim(), 'evolve/t');
+    const g = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8' });
+    assert.equal(g('status', '--porcelain').trim(), '');
+    assert.equal(g('log', '-1', '--format=%s').trim(), 'evolve: start run t');
     assert.match(fs.readFileSync(path.join(repo, '.gitignore'), 'utf8'), /\.evolve\/worktrees\//);
   } finally { rm(repo); }
 });
@@ -73,5 +76,14 @@ test('init detects maven wrapper', () => {
     assert.equal(c.app.kind, 'backend');
     assert.equal(c.app.build, './mvnw -q -DskipTests package');
     assert.equal(c.app.test, './mvnw -q test');
+  } finally { rm(repo); }
+});
+
+test('init rejects an invalid run name', () => {
+  const repo = tmpRepo({ 'index.html': '<html></html>' });
+  try {
+    const r = spawnSync('node', [INIT, repo, '--run', 'bad/name', '--mode', 'invent'], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /invalid --run/);
   } finally { rm(repo); }
 });
