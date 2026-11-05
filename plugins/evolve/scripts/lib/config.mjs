@@ -57,6 +57,9 @@ export function applyDefaults(raw) {
   stringArray(knownIssues.horizontalScroll, 'knownIssues.horizontalScroll');
   requireInt(knownIssues.failingTests, 'knownIssues.failingTests', 0);
 
+  const characterisation = { ignore: [], ...(raw.characterisation ?? {}) };
+  stringArray(characterisation.ignore, 'characterisation.ignore');
+
   return {
     ...raw,
     branch: raw.branch ?? `evolve/${raw.run}`,
@@ -68,6 +71,7 @@ export function applyDefaults(raw) {
     thresholds: { lighthousePerf: -5, lighthouseA11y: -5, cls: 0.05, ...(raw.thresholds ?? {}) },
     maxAttempts,
     knownIssues,
+    characterisation,
     marker: raw.marker ?? '',
     transcripts: stringArray(raw.transcripts ?? [], 'transcripts'),
     prices: raw.prices ?? DEFAULT_PRICES,
