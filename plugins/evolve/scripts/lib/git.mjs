@@ -39,3 +39,7 @@ export function diffStat(repo, fromRef, toRef) {
       return { path: p.join('\t'), added: Number(added) || 0, removed: Number(removed) || 0 };
     });
 }
+
+export function recentSubjects(repo, n = 20) {
+  return run(repo, 'log', `-${n}`, '--format=%s').split('\n').filter(Boolean);
+}

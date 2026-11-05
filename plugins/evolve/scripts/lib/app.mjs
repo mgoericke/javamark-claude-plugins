@@ -1,6 +1,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import http from 'node:http';
 import net from 'node:net';
+import path from 'node:path';
 
 export function freePort() {
   return new Promise((resolve, reject) => {
@@ -35,9 +37,42 @@ async function answers(url) {
   } catch { return false; }
 }
 
+const TYPES = {
+  '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png',
+  '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
+};
+
+function staticServer(root) {
+  const base = fs.realpathSync(root);
+  return http.createServer((req, res) => {
+    const send = (code, body, type = 'text/plain') => { res.writeHead(code, { 'content-type': type }); res.end(body); };
+    let rel;
+    try { rel = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { return send(400, 'bad request'); }
+    if (rel.includes('\0')) return send(400, 'bad request');
+    let file = path.resolve(base, `.${rel}`);
+    if (file !== base && !file.startsWith(base + path.sep)) return send(403, 'forbidden');
+    try {
+      if (fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
+      file = fs.realpathSync(file);
+      if (!file.startsWith(base + path.sep)) return send(403, 'forbidden');
+      send(200, fs.readFileSync(file), TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream');
+    } catch { send(404, 'not found'); }
+  });
+}
+
+async function startStatic(app, { cwd, port }) {
+  const dir = path.resolve(cwd ?? process.cwd(), app.start.slice('static:'.length));
+  const srv = staticServer(dir);
+  await new Promise((resolve, reject) => { srv.once('error', reject); srv.listen(port, '127.0.0.1', resolve); });
+  const stop = () => new Promise((resolve) => { srv.close(() => resolve()); srv.closeAllConnections?.(); });
+  return { url: app.url.replaceAll('{port}', String(port)), port, stop };
+}
+
 export async function startApp(app, { cwd, port, log } = {}) {
   port ??= await freePort();
   if (await portInUse(port)) throw new Error(`port ${port} is already in use`);
+  if (app.start.startsWith('static:')) return startStatic(app, { cwd, port });
   const sub = (s) => s.replaceAll('{port}', String(port));
   const url = sub(app.url);
   const env = { ...process.env, PORT: String(port) };

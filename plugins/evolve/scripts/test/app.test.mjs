@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import net from 'node:net';
 import { startApp, freePort } from '../lib/app.mjs';
+const require_net = () => net;
 
 const cwd = os.tmpdir();
 const alive = (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } };
@@ -93,5 +95,34 @@ test('stop() kills grandchildren', async () => {
   assert.equal(alive(gpid), true);
   await h.stop();
   assert.equal(alive(gpid), false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('startApp serves a static directory', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-static-'));
+  fs.mkdirSync(path.join(dir, 'site/sub'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'secret.txt'), 'secret');
+  fs.writeFileSync(path.join(dir, 'site/index.html'), '<h1>hi</h1>');
+  fs.writeFileSync(path.join(dir, 'site/sub/index.html'), '<h1>sub</h1>');
+  fs.writeFileSync(path.join(dir, 'site/a.css'), 'x{}');
+  fs.writeFileSync(path.join(dir, 'site/d.json'), '{}');
+  const h = await startApp({ kind: 'web', start: 'static:site', url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 5000 }, { cwd: dir });
+  try {
+    const home = await fetch(h.url);
+    assert.equal(await home.text(), '<h1>hi</h1>');
+    assert.match(home.headers.get('content-type'), /text\/html/);
+    assert.equal(await (await fetch(`${h.url}sub/`)).text(), '<h1>sub</h1>');
+    assert.match((await fetch(`${h.url}a.css`)).headers.get('content-type'), /text\/css/);
+    assert.match((await fetch(`${h.url}d.json`)).headers.get('content-type'), /application\/json/);
+    assert.equal((await fetch(`${h.url}nope.html`)).status, 404);
+    const raw = await new Promise((resolve) => {
+      const s = require_net().connect(h.port, '127.0.0.1', () => s.write('GET /../secret.txt HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n'));
+      let buf = ''; s.on('data', (d) => { buf += d; }); s.on('close', () => resolve(buf));
+    });
+    assert.doesNotMatch(raw, /secret$/);
+    assert.match(raw, /HTTP\/1\.1 (403|404)/);
+    assert.equal((await fetch(`${h.url}%2e%2e/secret.txt`)).status === 200, false);
+  } finally { await h.stop(); }
+  await assert.rejects(fetch(h.url));
   fs.rmSync(dir, { recursive: true, force: true });
 });
