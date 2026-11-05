@@ -54,6 +54,7 @@ export async function walkRoutes(baseUrl, routes, outDir) {
             }));
           });
           let status = 0;
+          let finalUrl = base + route;
           try {
             const res = await page.goto(base + route, { waitUntil: 'load', timeout: 30000 });
             status = res?.status() ?? 0;
@@ -62,6 +63,9 @@ export async function walkRoutes(baseUrl, routes, outDir) {
             consoleErrors.push(`navigation failed: ${e.message.split('\n')[0]}`);
           }
           await Promise.allSettled(pending);
+          finalUrl = page.url() && page.url() !== 'about:blank' ? page.url() : finalUrl;
+          const pathOf = (u) => { try { return new URL(u, base).pathname; } catch { return u; } };
+          const redirected = status !== 0 && pathOf(finalUrl) !== pathOf(route);
           let horizontalScroll = false;
           let mainContentTop = null;
           let controlsAbove = 0;
@@ -74,9 +78,9 @@ export async function walkRoutes(baseUrl, routes, outDir) {
             }
           } catch { /* page did not load */ }
           const screenshot = `${slugOf(route)}-${vp.name}.png`;
-          await page.screenshot({ path: path.join(outDir, screenshot) }).catch(() => {});
+          await page.screenshot({ fullPage: true, path: path.join(outDir, screenshot) }).catch(() => {});
           await page.close();
-          results.push({ route, viewport: vp.name, status, consoleErrors, horizontalScroll, mainContentTop, controlsAbove, bytes, screenshot });
+          results.push({ route, viewport: vp.name, status, finalUrl, redirected, consoleErrors, horizontalScroll, mainContentTop, controlsAbove, bytes, screenshot });
         }
       } finally { await context.close(); }
     }
