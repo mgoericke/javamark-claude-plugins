@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig, roundDir, evolveDir, tagName } from './lib/config.mjs';
@@ -28,7 +29,10 @@ function previousShotsDir(repo, n) {
   for (let i = n - 1; i >= 1; i--) {
     const f = path.join(roundDir(repo, i), 'summary.json');
     if (fs.existsSync(f)) {
-      try { if (readJson(f).status === 'shipped') return path.join(roundDir(repo, i), 'shots'); } catch { /* unreadable summary: skip */ }
+      try {
+        const shots = path.join(roundDir(repo, i), 'shots');
+        if (readJson(f).status === 'shipped' && fs.existsSync(shots)) return shots;
+      } catch { /* unreadable summary: skip */ }
     }
   }
   return path.join(roundDir(repo, 0), 'shots');
@@ -38,17 +42,24 @@ function readStart(repo, n) {
   const f = path.join(roundDir(repo, n), 'start.txt');
   if (!fs.existsSync(f)) throw new Error(`no start.txt for round ${n}; run check.mjs --start ${n} first`);
   const [sha, startedAt] = fs.readFileSync(f, 'utf8').split('\n');
+  if (!sha?.trim()) throw new Error(`start.txt for round ${n} has no sha; run check.mjs --start ${n} again`);
   return { sha: sha.trim(), startedAt: startedAt?.trim() };
 }
 
-// code changes vs the start sha from the staged tree, without anything under .evolve/
+// code changes vs the start sha, computed in a throwaway index so the real index stays untouched
 function codeFiles(repo, startSha) {
-  sh(repo, 'add', '-A');
-  return sh(repo, 'diff', '--cached', '--numstat', startSha, '--', '.', ':(exclude).evolve')
-    .split('\n').filter(Boolean).map((line) => {
-      const [added, removed, ...p] = line.split('\t');
-      return { path: p.join('\t'), added: Number(added) || 0, removed: Number(removed) || 0 };
-    });
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-index-'));
+  const env = { ...process.env, GIT_INDEX_FILE: path.join(tmp, 'index') };
+  const g = (...a) => execFileSync('git', a, { cwd: repo, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    g('read-tree', 'HEAD');
+    g('add', '-A');
+    return g('diff', '--cached', '--numstat', startSha, '--', '.', ':(exclude).evolve')
+      .split('\n').filter(Boolean).map((line) => {
+        const [added, removed, ...p] = line.split('\t');
+        return { path: p.join('\t'), added: Number(added) || 0, removed: Number(removed) || 0 };
+      });
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 
 export async function ship(repo, n, summaryFile) {
@@ -72,12 +83,28 @@ export async function ship(repo, n, summaryFile) {
     summary.tag = tag;
     summary.files = codeFiles(repo, startSha);
     validateSummary(summary);
-    const diffs = await diffShots(previousShotsDir(repo, n), path.join(dir, 'shots'), path.join(dir, 'diff'));
-    writeJson(path.join(dir, 'diffs.json'), diffs);
-    writeJson(path.join(dir, 'summary.json'), summary);
-    appendChangelog(repo, summary);
-    git.commitAll(repo, `evolve r${String(n).padStart(3, '0')}: ${summary.title}`);
-    git.tag(repo, tag);
+    // compute everything first; nothing is written until it all succeeded
+    const diffDir = path.join(dir, 'diff');
+    fs.rmSync(diffDir, { recursive: true, force: true });
+    let diffs;
+    try { diffs = await diffShots(previousShotsDir(repo, n), path.join(dir, 'shots'), diffDir); } catch (e) { fs.rmSync(diffDir, { recursive: true, force: true }); throw e; }
+    const changelog = path.join(evolveDir(repo), 'CHANGELOG.md');
+    const oldChangelog = fs.existsSync(changelog) ? fs.readFileSync(changelog) : null;
+    const prevHead = git.head(repo);
+    try {
+      writeJson(path.join(dir, 'diffs.json'), diffs);
+      writeJson(path.join(dir, 'summary.json'), summary);
+      appendChangelog(repo, summary);
+      git.commitAll(repo, `evolve r${String(n).padStart(3, '0')}: ${summary.title}`);
+      git.tag(repo, tag);
+    } catch (e) {
+      try { sh(repo, 'reset', '-q', prevHead); } catch { /* best effort */ }
+      fs.rmSync(diffDir, { recursive: true, force: true });
+      fs.rmSync(path.join(dir, 'diffs.json'), { force: true });
+      fs.rmSync(path.join(dir, 'summary.json'), { force: true });
+      if (oldChangelog) fs.writeFileSync(changelog, oldChangelog); else fs.rmSync(changelog, { force: true });
+      throw e;
+    }
     return summary;
   }
 

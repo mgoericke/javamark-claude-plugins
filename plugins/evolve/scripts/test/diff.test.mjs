@@ -56,3 +56,17 @@ test('diffShots handles a missing previous directory', { skip }, async () => {
     assert.deepEqual(res, [{ file: 'x.png', changedPixels: null, box: null }]);
   } finally { fs.rmSync(d, { recursive: true, force: true }); }
 });
+
+test('a sub-threshold change does not widen the box', { skip }, async () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-diff-'));
+  try {
+    const mk = (fn) => { const p = new PNG({ width: 40, height: 40 }); for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) { const [r, g, b] = fn(x, y); const i = (y * 40 + x) * 4; p.data[i] = r; p.data[i + 1] = g; p.data[i + 2] = b; p.data[i + 3] = 255; } return PNG.sync.write(p); };
+    fs.mkdirSync(path.join(d, 'a')); fs.mkdirSync(path.join(d, 'b'));
+    fs.writeFileSync(path.join(d, 'a/s.png'), mk(() => [200, 200, 200]));
+    // real change at (5,5) 10x10; a barely visible +1 shift in the far corner
+    fs.writeFileSync(path.join(d, 'b/s.png'), mk((x, y) => (x >= 5 && x < 15 && y >= 5 && y < 15 ? [0, 0, 0] : x === 38 && y === 38 ? [201, 200, 200] : [200, 200, 200])));
+    const [res] = await diffShots(path.join(d, 'a'), path.join(d, 'b'), path.join(d, 'out'));
+    assert.equal(res.changedPixels, 100);
+    assert.deepEqual(res.box, { x: 5, y: 5, w: 10, h: 10 });
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});

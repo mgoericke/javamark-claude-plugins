@@ -30,14 +30,15 @@ export async function diffShots(prevDir, curDir, outDir) {
     const b = pad(PNG, b0, w, h);
     const diff = new PNG({ width: w, height: h });
     const changedPixels = pixelmatch(a.data, b.data, diff.data, w, h, { threshold: 0.1 });
+    // box from the same predicate as changedPixels: pixelmatch paints counted differences pure red
     let minX = w, minY = h, maxX = -1, maxY = -1;
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
-      if (a.data[i] !== b.data[i] || a.data[i + 1] !== b.data[i + 1] || a.data[i + 2] !== b.data[i + 2] || a.data[i + 3] !== b.data[i + 3]) {
+      if (diff.data[i] === 255 && diff.data[i + 1] === 0 && diff.data[i + 2] === 0 && diff.data[i + 3] === 255) {
         if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y;
       }
     }
-    const box = changedPixels > 0 && maxX >= 0 ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
+    const box = maxX >= 0 ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 } : null;
     fs.mkdirSync(outDir, { recursive: true });
     fs.writeFileSync(path.join(outDir, file.replace(/\.png$/, '-diff.png')), PNG.sync.write(diff));
     results.push({ file, changedPixels, box });

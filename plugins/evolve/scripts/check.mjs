@@ -7,7 +7,7 @@ import { readConfig, writeConfig, roundDir, evolveDir } from './lib/config.mjs';
 import { startApp, freePort } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { importDep } from './lib/deps.mjs';
-import { head } from './lib/git.mjs';
+import { head, isClean } from './lib/git.mjs';
 import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
 const charDir = (repo) => path.join(evolveDir(repo), 'characterisation');
@@ -90,6 +90,7 @@ async function main(args) {
 
   const startN = val('--start');
   if (startN !== undefined) {
+    if (!isClean(repo)) { console.error('commit or stash your changes before a round starts'); return 1; }
     const dir = roundDir(repo, startN);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'start.txt'), `${head(repo)}\n${new Date().toISOString()}\n`);
@@ -142,6 +143,13 @@ async function main(args) {
   fs.writeFileSync(path.join(dir, 'guardrails.json'), JSON.stringify(result, null, 2) + '\n');
   for (const c of [...result.hard, ...result.soft]) {
     console.log(`${c.pass ? 'PASS' : 'FAIL'} ${c.name}: ${c.value}${c.detail ? ` (${c.detail})` : ''}`);
+  }
+  if (isBaseline) {
+    // rounds start from a clean tree, so the baseline artefacts must be committed
+    const g = (...a) => spawnSync('git', a, { cwd: repo, encoding: 'utf8' });
+    g('add', '--', '.evolve', ':(exclude).evolve/worktrees');
+    const c = g('commit', '-q', '-m', 'evolve: baseline', '--', '.evolve');
+    if (c.status !== 0 && !/nothing to commit/.test(c.stdout + c.stderr)) { console.error(`baseline commit failed: ${c.stderr || c.stdout}`); return 1; }
   }
   return result.pass ? 0 : 1;
 }

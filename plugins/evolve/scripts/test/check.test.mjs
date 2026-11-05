@@ -20,9 +20,40 @@ function repoWith(app, extra = {}) {
   return dir;
 }
 
+const ident = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+const commitAll = (dir) => { execFileSync('git', ['add', '-A'], { cwd: dir }); execFileSync('git', ['commit', '-q', '-m', 'c'], { cwd: dir, env: ident }); };
+
+test('--start refuses a dirty tree', () => {
+  const dir = repoWith({ start: `static:${site}` });
+  try {
+    commitAll(dir);
+    fs.writeFileSync(path.join(dir, 'stray.txt'), 'x');
+    const r = spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' });
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /commit or stash your changes before a round starts/);
+    assert.ok(!fs.existsSync(path.join(dir, '.evolve/rounds/r001/start.txt')));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('--baseline commits .evolve as "evolve: baseline"', () => {
+  const dir = repoWith({ start: `static:${site}` });
+  try {
+    commitAll(dir);
+    const r = spawnSync('node', [check, dir, '--baseline'], { encoding: 'utf8', env: ident });
+    assert.equal(r.status, 0, r.stderr + r.stdout);
+    const log = (a) => execFileSync('git', a, { cwd: dir, encoding: 'utf8' }).trim();
+    assert.equal(log(['log', '-1', '--format=%s']), 'evolve: baseline');
+    assert.match(log(['show', '--name-only', '--format=', 'HEAD']), /rounds\/r000\/metrics\.json/);
+    assert.equal(log(['status', '--porcelain']), '');
+    // a round can now start
+    assert.equal(spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' }).status, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('--start writes sha and ISO time', () => {
   const dir = repoWith({ start: `static:${site}` });
   try {
+    commitAll(dir);
     const r = spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     const [sha, when] = fs.readFileSync(path.join(dir, '.evolve/rounds/r001/start.txt'), 'utf8').trim().split('\n');
