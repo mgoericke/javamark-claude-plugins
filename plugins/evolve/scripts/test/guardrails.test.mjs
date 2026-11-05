@@ -146,3 +146,18 @@ test('characterisation ignores volatile fields, names changed endpoint', () => {
     assert.deepEqual(bad.failed, ['GET /api/a', 'route /']);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('parseFailing takes the maven total, not the first class line', () => {
+  const out = [
+    '[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1 s -- in A',
+    '[ERROR] Tests run: 4, Failures: 1, Errors: 1, Skipped: 0, Time elapsed: 1 s -- in B',
+    '[ERROR] Tests run: 7, Failures: 1, Errors: 1, Skipped: 0',
+  ].join('\n');
+  assert.equal(parseFailing(out), 2);
+});
+
+test('an endpoint without an answer fails even if the baseline had none', () => {
+  const config = cfg({ endpoints: [{ path: '/api/new', status: 200 }] });
+  const none = metrics({ endpoints: [{ path: '/api/new', status: 0 }] });
+  assert.equal(find(evaluate({ baseline: none, current: none, config }), 'endpoints').pass, false);
+});

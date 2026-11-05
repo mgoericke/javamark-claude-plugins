@@ -45,6 +45,8 @@ export function applyDefaults(raw) {
   requireInt(roundsPerBlock, 'roundsPerBlock', 1);
   requireInt(blocks, 'blocks', 1);
   requireInt(maxAttempts, 'maxAttempts', 1);
+  const commandTimeoutMs = raw.commandTimeoutMs ?? 1200000;
+  requireInt(commandTimeoutMs, 'commandTimeoutMs', 1);
 
   const endpoints = raw.endpoints ?? [];
   if (!Array.isArray(endpoints) || endpoints.some((e) => !isObj(e) || typeof e.path !== 'string' || !Number.isInteger(e.status))) {
@@ -70,6 +72,7 @@ export function applyDefaults(raw) {
     endpoints,
     thresholds: { lighthousePerf: -5, lighthouseA11y: -5, cls: 0.05, ...(raw.thresholds ?? {}) },
     maxAttempts,
+    commandTimeoutMs,
     knownIssues,
     characterisation,
     marker: raw.marker ?? '',

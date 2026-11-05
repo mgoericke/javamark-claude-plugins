@@ -11,7 +11,12 @@ import { head } from './lib/git.mjs';
 import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
 const charDir = (repo) => path.join(evolveDir(repo), 'characterisation');
-const sh = (cmd, cwd) => spawnSync(cmd, { cwd, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+// a timeout counts as failure (status null, timedOut true)
+export function runCommand(cmd, cwd, timeoutMs) {
+  const r = spawnSync(cmd, { cwd, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: timeoutMs, killSignal: 'SIGKILL' });
+  const timedOut = r.error?.code === 'ETIMEDOUT';
+  return { ...r, timedOut, ok: r.status === 0 && !timedOut };
+}
 
 async function fetchEndpoints(base, config) {
   const out = [];
@@ -51,12 +56,11 @@ export async function collect(repo, config, outDir) {
   const notes = [];
   const m = { build: { ok: true }, test: { ok: true, failing: 0 }, start: { ok: false }, routes: [], endpoints: [] };
   if (config.app.build) {
-    const r = sh(config.app.build, repo);
-    m.build = { ok: r.status === 0 };
+    m.build = { ok: runCommand(config.app.build, repo, config.commandTimeoutMs).ok };
   }
   if (config.app.test) {
-    const r = sh(config.app.test, repo);
-    m.test = r.status === 0 ? { ok: true, failing: 0 } : { ok: false, failing: parseFailing(`${r.stdout}\n${r.stderr}`) };
+    const r = runCommand(config.app.test, repo, config.commandTimeoutMs);
+    m.test = r.ok ? { ok: true, failing: 0 } : { ok: false, failing: Math.max(1, parseFailing(`${r.stdout}\n${r.stderr}`)) };
   }
   let handle;
   try {
@@ -69,8 +73,10 @@ export async function collect(repo, config, outDir) {
       m.endpoints = await fetchEndpoints(handle.url, config);
       const lh = await runLighthouse(new URL(config.routes[0] ?? '/', handle.url).href);
       if (lh.metrics) m.lighthouse = lh.metrics; else notes.push(lh.note);
-      if (config.mode === 'modernize' && fs.existsSync(path.join(charDir(repo), 'characterisation.json'))) {
-        m.characterisation = compareCharacterisation(charDir(repo), await snapshotCharacterisation(handle.url, config));
+      if (config.mode === 'modernize') {
+        m.characterisation = fs.existsSync(path.join(charDir(repo), 'characterisation.json'))
+          ? compareCharacterisation(charDir(repo), await snapshotCharacterisation(handle.url, config))
+          : { passed: 0, failed: ['no characterisation recorded — run check.mjs --record-characterisation'] };
       }
     } finally { await handle.stop(); }
   }

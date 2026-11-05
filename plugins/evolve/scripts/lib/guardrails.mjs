@@ -10,9 +10,10 @@ const round = (n) => Math.round(n * 10000) / 10000;
 // failing test count from common runner summaries; 1 when unparsable
 export function parseFailing(output) {
   const text = String(output ?? '');
-  let m = text.match(/Tests run: \d+, Failures: (\d+), Errors: (\d+)/);
-  if (m) return Number(m[1]) + Number(m[2]);
-  m = text.match(/^# fail (\d+)/m);
+  // maven prints one line per class and the total last
+  const mvn = [...text.matchAll(/Tests run: \d+, Failures: (\d+), Errors: (\d+)/g)].pop();
+  if (mvn) return Number(mvn[1]) + Number(mvn[2]);
+  let m = text.match(/^# fail (\d+)/m);
   if (m) return Number(m[1]);
   m = text.match(/Tests:?\s+(\d+) failed/);
   if (m) return Number(m[1]);
@@ -41,7 +42,7 @@ function endpoints(baseline, current, config) {
   const problems = [];
   for (const e of config.endpoints) {
     const got = cur.get(e.path);
-    if (got !== e.status && got !== base.get(e.path)) problems.push(`${e.path}: expected ${e.status}, got ${got ?? 'no answer'}`);
+    if (!got || (got !== e.status && got !== base.get(e.path))) problems.push(`${e.path}: expected ${e.status}, got ${got ?? 'no answer'}`);
   }
   return { name: 'endpoints', pass: problems.length === 0, value: `${config.endpoints.length - problems.length}/${config.endpoints.length}`, ...(problems.length ? { detail: problems.join('; ') } : {}) };
 }
