@@ -1,20 +1,20 @@
-# iteration-lab — design
+# evolve — design
 
 Status: draft for Mark's approval · 5 Nov 2026
 
 ## Intent
 
-A reusable Claude Code plugin that develops an existing application further in **rounds**: each
+`evolve` is a reusable Claude Code plugin that develops an existing application further in **rounds**: each
 round ships one bold, innovative idea, and the application stays runnable after every round. It is
-for projects where Mark no longer quite knows how to go on — the lab scans what is there, proposes,
+for projects where Mark no longer quite knows how to go on — evolve scans what is there, proposes,
 builds, checks and shows every step.
 
 It generalises what worked in the Rasen-Radar lab (`rasenradar-lab/LAB.md`, 102 rounds, a large
 part ported to the real product) and fixes what did not:
 
-| Rasen-Radar lab | iteration-lab |
+| Rasen-Radar lab | evolve |
 |---|---|
-| 100 rounds in one go; Mark's key corrections came mid-run | the user picks rounds per block and number of blocks; the lab stops after each block for feedback |
+| 100 rounds in one go; Mark's key corrections came mid-run | the user picks rounds per block and number of blocks; evolve stops after each block for feedback |
 | product rules (data first, no prediction game, AI one click away) arrived late, rounds drifted | a short **compass** interview before round 1; every idea is checked against it |
 | features piled up, the last days were spent decluttering | usability is a guardrail (measured), the last round of each block is a tidy-up round |
 | `ship.sh` measured Lighthouse, CLS and sizes — regressions showed early | kept and generalised: hard checks, revert when they fail |
@@ -29,9 +29,9 @@ part ported to the real product) and fixes what did not:
     behaviour (characterisation checks), then each round is one migration step from a roadmap
     (e.g. "Tomcat WAR → Quarkus, cloud-ready"), every characterisation check green after each step.
 - **Blocks**: at the start the user chooses rounds per block and number of blocks (e.g. 3 × 5).
-  After each block the lab stops, summarises (what shipped, best ideas, metric trend, cost) and asks
+  After each block evolve stops, summarises (what shipped, best ideas, metric trend, cost) and asks
   whether to continue, change the compass, or stop.
-- **Scan**: before each block the lab looks at the application with what is available — Playwright
+- **Scan**: before each block evolve looks at the application with what is available — Playwright
   walk through the routes (screenshots desktop + 390 px, console errors), code reading, OpenAPI /
   REST resources, README / CLAUDE.md, git history. For web UIs it inventories the data the backend
   offers and how much of it the UI uses; ideas that put unused data to work are preferred, a new
@@ -46,14 +46,14 @@ part ported to the real product) and fixes what did not:
     screenshots, plus the changed files
   - per round: the idea, why, what was checked, cost of the round
 - **Reusable**: works in any git repository; nothing project-specific in the plugin. All run data
-  lives in the target repo under `.lab/`.
+  lives in the target repo under `.evolve/`.
 - **Supported targets**: web UIs first (static sites, SPAs, server-rendered apps). Backend services
   are supported for scanning, guardrails (HTTP smoke checks) and the round log; their dashboard
   main area shows changed endpoints and files instead of a UI.
 
 ## Non-goals (v1)
 
-- No automatic push, PR or merge. The lab works on a local branch; publishing stays the user's call.
+- No automatic push, PR or merge. evolve works on a local branch; publishing stays the user's call.
 - No hosted service, no accounts; the dashboard binds to localhost.
 - No cost in euros as a fact: tokens are exact, a cost figure is an estimate from a price table the
   user can edit.
@@ -64,7 +64,7 @@ part ported to the real product) and fixes what did not:
 - A round leaves the application not starting, or a page broken.
 - The application gets more cluttered every round (Rasen-Radar: buttons before matches).
 - Ideas ignore the compass (e.g. betting language in a product that rules it out).
-- The lab invents data, testimonials or user numbers.
+- evolve invents data, testimonials or user numbers.
 - Modernize mode changes behaviour the user did not ask to change.
 
 ## How it works
@@ -73,11 +73,11 @@ part ported to the real product) and fixes what did not:
 
 | Command | What it does |
 |---|---|
-| `/lab-init` | Interview: target (repo, how to build, test and start it, URL / routes), mode, rounds per block, blocks, compass (product principles, no-gos, audience), and for modernize the target stack. Detects stack and commands where it can and asks only for the rest. Writes `.lab/lab.json` and `.lab/COMPASS.md`, takes the baseline (round 0: scan + guardrail metrics + screenshots), creates the branch `lab/<run-name>`. |
-| `/lab-run` | Runs the next block. Starts the dashboard if it is not running. |
-| `/lab-dashboard` | Starts (or reopens) the dashboard. |
-| `/lab-status` | Short text status: block, round, guardrails, usage. |
-| `/lab-triage` | After the last block: every round as keep / adapt / drop with a reason, written to `.lab/TRIAGE.md` — the hand-off for porting to the real product (Rasen-Radar: triage → user stories). |
+| `/evolve start` | Interview: target (repo, how to build, test and start it, URL / routes), mode, rounds per block, blocks, compass (product principles, no-gos, audience), and for modernize the target stack. Detects stack and commands where it can and asks only for the rest. Writes `.evolve/evolve.json` and `.evolve/COMPASS.md`, takes the baseline (round 0: scan + guardrail metrics + screenshots), creates the branch `evolve/<run-name>`. |
+| `/evolve next` | Runs the next block. Starts the dashboard if it is not running. |
+| `/evolve board` | Starts (or reopens) the dashboard. |
+| `/evolve status` | Short text status: block, round, guardrails, usage. |
+| `/evolve review` | After the last block: every round as keep / adapt / drop with a reason, written to `.evolve/TRIAGE.md` — the hand-off for porting to the real product (Rasen-Radar: triage → user stories). |
 
 ### Who runs a round
 
@@ -95,7 +95,7 @@ early if a round could not be shipped or reverted cleanly.
 3. Build it.
 4. Run the guardrails. On failure: fix (bounded attempts) or `git reset` to the round's start and
    log the round as reverted with the reason.
-5. Ship: commit, tag `lab-<run>-r<NNN>`, store screenshots, metrics and `summary.json`, append the
+5. Ship: commit, tag `evolve-<run>-r<NNN>`, store screenshots, metrics and `summary.json`, append the
    changelog.
 
 The last round of each block is a **tidy-up round**: no new feature; it reduces clutter and quality
@@ -105,27 +105,27 @@ debt measured since the block started.
 
 Modernize starts with a **setup block** that does not count against the chosen rounds: scan,
 characterisation checks (Playwright walks of the main flows, recorded HTTP responses of the
-endpoints) and `.lab/ROADMAP.md`. It ends with a stop where the user confirms or edits the roadmap.
+endpoints) and `.evolve/ROADMAP.md`. It ends with a stop where the user confirms or edits the roadmap.
 Then the chosen blocks run; each round is the next roadmap step, and the characterisation checks are
 hard guardrails. The tidy-up round in modernize is code-level only (dead code, duplication, build
 warnings) and must not change behaviour.
 
 ### Guardrails
 
-Hard guardrails are **relative to round 0**: a project that needs the lab may already have failing
-tests, console errors or a page that scrolls sideways. `/lab-init` records these as known issues and
+Hard guardrails are **relative to round 0**: a project that needs evolve may already have failing
+tests, console errors or a page that scrolls sideways. `/evolve start` records these as known issues and
 shows them; a round may not add new ones (and may fix old ones). If the app does not build or start
-at all, `/lab-init` stops and says so — the lab needs a running baseline.
+at all, `/evolve start` stops and says so — evolve needs a running baseline.
 
 Hard (must pass, else fix or revert):
 
-- build and test commands from `lab.json` exit 0
+- build and test commands from `evolve.json` exit 0
 - the app starts with its start command and answers on its URL
 - Playwright smoke: every configured route loads, no console errors, no horizontal scrolling at
   390 px; for backends: every configured endpoint answers with the expected status
 - modernize: all characterisation checks green
 - no regression beyond thresholds against round 0, where measurable: Lighthouse performance and
-  accessibility, CLS (thresholds in `lab.json`, defaults: −5 points, +0.05 CLS)
+  accessibility, CLS (thresholds in `evolve.json`, defaults: −5 points, +0.05 CLS)
 
 Soft (logged and shown, trigger the tidy-up round):
 
@@ -137,8 +137,8 @@ Soft (logged and shown, trigger the tidy-up round):
 ### Run data in the target repo
 
 ```
-.lab/
-  lab.json            config: commands, routes, mode, blocks, thresholds
+.evolve/
+  evolve.json            config: commands, routes, mode, blocks, thresholds
   COMPASS.md          product principles from the interview
   ROADMAP.md          modernize only
   CHANGELOG.md        one entry per round
@@ -146,21 +146,21 @@ Soft (logged and shown, trigger the tidy-up round):
   dashboard.log
 ```
 
-`.lab/` is committed on the lab branch so every round's record travels with its code.
+`.evolve/` is committed on the evolve branch so every round's record travels with its code.
 
 ### Dashboard
 
 - Node server without a build step (`node server.mjs`), vanilla HTML/JS, localhost only.
-- Starting a round's application: a git worktree per round tag (cached under `.lab/worktrees/`, git
-  ignored). `/lab-init` asks for an optional setup command (e.g. `npm ci`) and a start command with a
+- Starting a round's application: a git worktree per round tag (cached under `.evolve/worktrees/`, git
+  ignored). `/evolve start` asks for an optional setup command (e.g. `npm ci`) and a start command with a
   `{port}` placeholder or `PORT` variable; at most two rounds run at a time, oldest stopped first.
   Static sites are served directly. This is best effort: if a round does not start (shared database,
   fixed port, long build), the main area shows its screenshots and the reason.
 - Usage: read from Claude Code's session transcripts (`~/.claude/projects/*/…jsonl`, including the
   subagent transcripts beside them): per assistant message timestamp, model and token usage. The
   session is not found by folder name — the session may run outside the repo (e.g. the desktop app's
-  scratch workspaces). Instead `/lab-init` and each block print a unique run marker; `usage.mjs`
-  finds the transcript files that contain it, records their paths in `.lab/lab.json`, and sums
+  scratch workspaces). Instead `/evolve start` and each block print a unique run marker; `usage.mjs`
+  finds the transcript files that contain it, records their paths in `.evolve/evolve.json`, and sums
   usage per round by the round's start and end time from `summary.json`. Unrelated parallel sessions
   are never counted.
 - Overlay: per route and viewport the screenshot of the round with the changed pixels against the
@@ -169,18 +169,18 @@ Soft (logged and shown, trigger the tidy-up round):
 ### Plugin layout
 
 ```
-plugins/iteration-lab/
+plugins/evolve/
   .claude-plugin/plugin.json
   README.md
-  commands/  lab-init.md  lab-run.md  lab-dashboard.md  lab-status.md  lab-triage.md
-  skills/iteration-lab/SKILL.md        the loop protocol, both modes, guardrail rules
+  commands/  evolve.md                    one command, subcommands start · next · board · status · review
+  skills/evolve/SKILL.md               the loop protocol, both modes, guardrail rules
   references/  compass-interview.md  idea-rules.md  modernize-playbook.md  round-summary-schema.md
   scripts/     package.json  scan.mjs  check.mjs  ship.mjs  usage.mjs
   dashboard/   server.mjs  index.html  app.js  app.css
 ```
 
 Node dependencies (Playwright, pixelmatch, pngjs; Lighthouse optional) are installed once by
-`/lab-init` into a persistent per-user folder (`~/.cache/iteration-lab/<plugin version>/`), because a
+`/evolve start` into a persistent per-user folder (`~/.cache/evolve/<plugin version>/`), because a
 plugin update replaces the plugin folder; Playwright's Chromium is reused when present.
 
 ## Constraints
@@ -192,6 +192,8 @@ plugin update replaces the plugin folder; Playwright's Chromium is reused when p
 
 ## Decided by Mark
 
+- Name `evolve`: one command with subcommands — `/evolve start`, `/evolve next`, `/evolve board`,
+  `/evolve status`, `/evolve review`.
 - Blocks instead of one long run; the user is asked for rounds and blocks.
 - Modernize is its own mode.
 - Built as a plugin in `mgoericke/javamark-claude-plugins`, delivered as a pull request.
@@ -200,7 +202,6 @@ plugin update replaces the plugin folder; Playwright's Chromium is reused when p
 
 ## My calls (Claude) — open for Mark to change
 
-- Plugin name `iteration-lab`, commands `/lab-*`.
 - Tidy-up round as the last round of each block.
 - Git tag per round + worktrees for the dashboard instead of copied snapshot folders.
 - Visual pixel diff as the overlay (a DOM-level diff is out of scope for v1).
@@ -211,7 +212,7 @@ plugin update replaces the plugin folder; Playwright's Chromium is reused when p
 - Modernize: a setup block outside the chosen rounds; tidy-up there is code-level only.
 - Usage found by a run marker in the transcripts, not by folder name.
 - Old rounds of server apps in the dashboard are best effort, with screenshots as fallback.
-- Node dependencies in `~/.cache/iteration-lab/`.
+- Node dependencies in `~/.cache/evolve/`.
 - Pilot: after the plugin PR, one short run (1 block × 2 rounds) on a local clone of the real
   Rasen-Radar repo, on a local branch, to prove it end to end; nothing is pushed.
 
