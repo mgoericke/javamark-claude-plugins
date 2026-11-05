@@ -1,0 +1,53 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readConfig, writeConfig, evolveDir } from './lib/config.mjs';
+import { findTranscripts, readUsage, sumUsage, estimateCost, unpricedModels } from './lib/usage.mjs';
+
+function readJson(file) {
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
+}
+
+// Round windows: finished rounds from summary.json, a running round from start.txt (line 2) until now.
+function roundWindows(repo, now) {
+  const dir = path.join(evolveDir(repo), 'rounds');
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((n) => /^r\d+$/.test(n)).sort(); } catch { return {}; }
+  const out = {};
+  for (const name of names) {
+    const n = Number(name.slice(1));
+    const s = readJson(path.join(dir, name, 'summary.json'));
+    if (s?.startedAt && s?.endedAt) {
+      out[n] = { from: new Date(s.startedAt), to: new Date(s.endedAt) };
+      continue;
+    }
+    try {
+      const start = fs.readFileSync(path.join(dir, name, 'start.txt'), 'utf8').split('\n')[1]?.trim();
+      if (start && !Number.isNaN(new Date(start).getTime())) out[n] = { from: new Date(start), to: now };
+    } catch { /* no window */ }
+  }
+  return out;
+}
+
+export function computeUsage(repo, { root, now = new Date() } = {}) {
+  const config = readConfig(repo);
+  const files = findTranscripts(config.marker, root);
+  writeConfig(repo, { ...JSON.parse(fs.readFileSync(path.join(evolveDir(repo), 'evolve.json'), 'utf8')), transcripts: files });
+  const entries = readUsage(files);
+  const pack = (sum) => ({
+    total: sum.total, byModel: sum.byModel, cost: estimateCost(sum, config.prices),
+    ...(unpricedModels(sum, config.prices).length ? { unpriced: unpricedModels(sum, config.prices) } : {}),
+  });
+  const rounds = {};
+  for (const [n, win] of Object.entries(roundWindows(repo, now))) rounds[n] = pack(sumUsage(entries, win));
+  const result = { at: now.toISOString(), ...pack(sumUsage(entries)), rounds };
+  fs.writeFileSync(path.join(evolveDir(repo), 'usage.json'), JSON.stringify(result, null, 2) + '\n');
+  return result;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+  const repo = path.resolve(process.argv[2] ?? '.');
+  const r = computeUsage(repo);
+  console.log(`usage: ${r.total.input + r.total.output + r.total.cacheWrite + r.total.cacheRead} tokens, ~${r.cost.toFixed(2)} EUR, ${Object.keys(r.rounds).length} rounds`);
+}
