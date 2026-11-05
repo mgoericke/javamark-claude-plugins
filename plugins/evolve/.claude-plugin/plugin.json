@@ -1,0 +1,7 @@
+{
+  "name": "evolve",
+  "version": "0.1.0",
+  "description": "Iteration lab: let Claude improve a repository round by round on its own branch, with scans, guardrails, tags and a dashboard.",
+  "author": { "name": "Mark" },
+  "components": { "skills": ["skills/"], "commands": ["commands/"] }
+}
