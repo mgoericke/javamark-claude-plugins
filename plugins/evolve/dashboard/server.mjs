@@ -133,8 +133,8 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(file
   const srv = await createServer({ repo, port });
   const line = `evolve dashboard: ${srv.url}`;
   console.log(line);
-  fs.mkdirSync(evolveDir(repo), { recursive: true });
-  fs.appendFileSync(path.join(evolveDir(repo), 'dashboard.log'), `${new Date().toISOString()} ${line}\n`);
+  fs.mkdirSync(path.join(evolveDir(repo), 'local'), { recursive: true });
+  fs.appendFileSync(path.join(evolveDir(repo), 'local', 'dashboard.log'), `${new Date().toISOString()} ${line}\n`);
   let closing = false;
   const shutdown = async () => {
     if (closing) return;

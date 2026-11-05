@@ -10,7 +10,8 @@ export function head(repo) {
 
 export function isClean(repo) {
   const out = run(repo, 'status', '--porcelain', '--untracked-files=all');
-  return !out.split('\n').some((l) => l && !l.slice(3).startsWith('.evolve/worktrees/'));
+  const local = ['.evolve/worktrees/', '.evolve/local/'];
+  return !out.split('\n').some((l) => l && !local.some((p) => l.slice(3).startsWith(p)));
 }
 
 export function commitAll(repo, message) {

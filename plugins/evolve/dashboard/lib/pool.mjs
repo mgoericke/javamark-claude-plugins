@@ -31,10 +31,12 @@ export function createPool({ repo, config, max = 2 }) {
   const apps = new Map(); // n -> handle, insertion order = recency (oldest first)
   const pending = new Map(); // n -> Promise (serialises concurrent ensure per round)
 
-  async function evict(keep) {
-    while (apps.size > max) {
-      const oldest = [...apps.keys()].find((k) => k !== keep);
-      if (oldest === undefined) return;
+  let closed = false;
+  let chain = Promise.resolve(); // launches are serialised so the cap holds
+
+  async function makeRoom() {
+    while (apps.size >= max) {
+      const oldest = apps.keys().next().value;
       const h = apps.get(oldest);
       apps.delete(oldest);
       await h.stop();
@@ -43,32 +45,37 @@ export function createPool({ repo, config, max = 2 }) {
 
   async function launch(n) {
     const ref = refFor(repo, config, n);
+    await makeRoom();
+    if (closed) throw new Error('pool is stopped');
     const wt = path.join(evolveDir(repo), 'worktrees', `r${pad(n)}`);
     if (!fs.existsSync(wt)) {
       fs.mkdirSync(path.dirname(wt), { recursive: true });
       git(repo, 'worktree', 'add', '--detach', wt, ref);
     }
-    const logDir = path.join(evolveDir(repo), 'logs');
+    const logDir = path.join(evolveDir(repo), 'local', 'logs');
     fs.mkdirSync(logDir, { recursive: true });
     const h = await startApp(config.app, { cwd: wt, log: path.join(logDir, `app-r${pad(n)}.log`) });
+    if (closed) { await h.stop(); throw new Error('pool is stopped'); }
     apps.set(n, h);
-    await evict(n);
     return h;
   }
 
   return {
     async ensure(n) {
+      if (closed) throw new Error('pool is stopped');
       const existing = apps.get(n);
       if (existing) { apps.delete(n); apps.set(n, existing); return { url: existing.url }; }
       let p = pending.get(n);
       if (!p) {
-        p = launch(n).finally(() => pending.delete(n));
+        p = chain.then(() => (apps.has(n) ? apps.get(n) : launch(n))).finally(() => pending.delete(n));
+        chain = p.catch(() => {});
         pending.set(n, p);
       }
       const h = await p;
       return { url: h.url };
     },
     async stopAll() {
+      closed = true;
       await Promise.allSettled([...pending.values()]);
       const all = [...apps.values()];
       apps.clear();

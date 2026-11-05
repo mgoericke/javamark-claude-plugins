@@ -13,6 +13,7 @@ function setup({ pass = true } = {}) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-ship-'));
   git(d, 'init', '-q');
   fs.writeFileSync(path.join(d, 'app.txt'), 'one\n');
+  fs.writeFileSync(path.join(d, '.gitignore'), '.evolve/worktrees/\n.evolve/local/\n');
   fs.mkdirSync(path.join(d, '.evolve/rounds/r001'), { recursive: true });
   fs.writeFileSync(path.join(d, '.evolve/evolve.json'), JSON.stringify({ run: 't', mode: 'invent', app: { kind: 'web', start: 'x', url: 'http://x/' } }));
   git(d, 'add', '-A'); git(d, 'commit', '-q', '-m', 'init');
@@ -32,6 +33,8 @@ test('ship commits and tags', () => {
   try {
     fs.writeFileSync(path.join(d, 'app.txt'), 'one\ntwo\n');
     fs.writeFileSync(path.join(d, 'new.txt'), 'n\n');
+    fs.mkdirSync(path.join(d, '.evolve/local'), { recursive: true });
+    fs.writeFileSync(path.join(d, '.evolve/local/dashboard.log'), 'log\n');
     const r = run(d, summaryFile(d));
     assert.equal(r.status, 0, r.stderr);
     assert.match(git(d, 'tag'), /evolve-t-r001/);
@@ -44,6 +47,7 @@ test('ship commits and tags', () => {
     assert.ok(s.endedAt);
     assert.equal(s.guardrails.pass, true);
     assert.deepEqual(s.files.map((f) => f.path).sort(), ['app.txt', 'new.txt']);
+    assert.equal(git(d, 'ls-files', '.evolve/local'), '');
     // summary.json is in the shipped commit
     assert.match(git(d, 'show', '--name-only', '--format=', 'HEAD'), /rounds\/r001\/summary\.json/);
   } finally { fs.rmSync(d, { recursive: true, force: true }); }

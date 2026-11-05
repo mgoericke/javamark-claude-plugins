@@ -34,6 +34,8 @@ test('git.isClean ignores worktrees dir', () => {
   try {
     fs.mkdirSync(path.join(repo, '.evolve', 'worktrees'), { recursive: true });
     fs.writeFileSync(path.join(repo, '.evolve', 'worktrees', 'w.txt'), 'x');
+    fs.mkdirSync(path.join(repo, '.evolve', 'local'), { recursive: true });
+    fs.writeFileSync(path.join(repo, '.evolve', 'local', 'dashboard.log'), 'x');
     assert.equal(git.isClean(repo), true);
     fs.writeFileSync(path.join(repo, 'a.txt'), 'x');
     assert.equal(git.isClean(repo), false);

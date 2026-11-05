@@ -1,11 +1,17 @@
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeRepo } from './helpers.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync, execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { isClean } from '../../scripts/lib/git.mjs';
+import { makeRepo, cleanup } from './helpers.mjs';
 import { createServer } from '../server.mjs';
 
 const { repo } = makeRepo();
 const srv = await createServer({ repo, port: 0 });
-after(() => srv.close());
+after(async () => { await srv.close(); cleanup(repo); });
 const get = (p) => fetch(srv.url + p.replace(/^\//, ''));
 
 test('GET /api/run lists rounds in order with status', async () => {
@@ -86,4 +92,28 @@ test('start: shipped round returns a live url', async () => {
   assert.equal(await (await fetch(url)).text(), 'round-1');
   const bad = await fetch(srv.url + 'api/rounds/1/start');
   assert.equal(bad.status, 405);
+});
+
+test('running the dashboard keeps a repo made by init clean', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-init-dash-'));
+  const g = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, encoding: 'utf8' });
+  g('init', '-q');
+  fs.writeFileSync(path.join(dir, 'index.html'), '<html>hi</html>');
+  g('add', '-A'); g('commit', '-q', '-m', 'init');
+  const init = fileURLToPath(new URL('../../scripts/init.mjs', import.meta.url));
+  const r = spawnSync('node', [init, dir, '--run', 't', '--mode', 'invent'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const rd = path.join(dir, '.evolve/rounds/r001');
+  fs.mkdirSync(rd, { recursive: true });
+  fs.writeFileSync(path.join(rd, 'summary.json'), JSON.stringify({ round: 1, block: 1, status: 'shipped', title: 'x', tag: 'evolve-t-r001' }));
+  g('add', '-A'); g('commit', '-q', '-m', 'r1'); g('tag', 'evolve-t-r001');
+  assert.equal(isClean(dir), true);
+  const s2 = await createServer({ repo: dir, port: 0 });
+  try {
+    const res = await fetch(s2.url + 'api/rounds/1/start', { method: 'POST' });
+    assert.equal(res.status, 200, await res.clone().text());
+    assert.equal(await (await fetch((await res.json()).url)).text(), '<html>hi</html>');
+    assert.equal(isClean(dir), true);
+    assert.equal(g('status', '--porcelain').trim(), '');
+  } finally { await s2.close(); cleanup(dir); }
 });

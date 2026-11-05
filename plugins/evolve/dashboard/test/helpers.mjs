@@ -13,6 +13,11 @@ export const NODE_APP = {
 };
 
 // temp repo: baseline + rounds 1 (shipped, tagged) and 2 (shipped, tagged), 3 (reverted), 4 (running)
+export const cleanup = (repo) => {
+  try { git(repo, 'worktree', 'prune'); } catch { /* ignore */ }
+  fs.rmSync(repo, { recursive: true, force: true });
+};
+
 export function makeRepo({ app = NODE_APP } = {}) {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-dash-'));
   git(repo, 'init', '-q');
@@ -21,7 +26,7 @@ export function makeRepo({ app = NODE_APP } = {}) {
   const config = { run: 'demo', mode: 'invent', roundsPerBlock: 2, blocks: 2, app, routes: ['/'], createdAt: '2026-01-01T00:00:00Z' };
   fs.mkdirSync(path.join(repo, '.evolve'), { recursive: true });
   fs.writeFileSync(path.join(repo, '.evolve/evolve.json'), JSON.stringify(config));
-  fs.writeFileSync(path.join(repo, '.gitignore'), '.evolve/\n');
+  fs.writeFileSync(path.join(repo, '.gitignore'), '.evolve/worktrees/\n.evolve/local/\n'); // same lines init.mjs writes
   fs.writeFileSync(path.join(repo, 'marker.txt'), 'base');
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'evolve: baseline');
@@ -51,5 +56,7 @@ export function makeRepo({ app = NODE_APP } = {}) {
   fs.mkdirSync(rd(4), { recursive: true });
   fs.writeFileSync(path.join(rd(4), 'start.txt'), 'def\n2026-01-04T09:00:00Z\n');
   fs.writeFileSync(path.join(repo, '.evolve/usage.json'), JSON.stringify({ at: 'x', total: 10, byModel: {}, cost: 1.5, rounds: { 1: { total: 4, byModel: {}, cost: 0.5 } } }));
+  git(repo, 'add', '-A');
+  git(repo, 'commit', '-q', '-m', 'evolve: round data');
   return { repo, config, rd };
 }

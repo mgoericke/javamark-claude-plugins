@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { roundDir, evolveDir, pad } from '../../scripts/lib/config.mjs';
+import { roundDir, evolveDir } from '../../scripts/lib/config.mjs';
 
 function readJson(file) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; }
@@ -95,5 +95,3 @@ export function roundDetail(repo, n) {
     usage: readUsage(repo)?.rounds?.[n] ?? null,
   };
 }
-
-export { pad };

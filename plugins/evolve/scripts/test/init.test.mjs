@@ -52,6 +52,7 @@ test('init detects npm scripts', () => {
     assert.equal(g('status', '--porcelain').trim(), '');
     assert.equal(g('log', '-1', '--format=%s').trim(), 'evolve: start run t');
     assert.match(fs.readFileSync(path.join(repo, '.gitignore'), 'utf8'), /\.evolve\/worktrees\//);
+    assert.match(fs.readFileSync(path.join(repo, '.gitignore'), 'utf8'), /^\.evolve\/local\/$/m);
   } finally { rm(repo); }
 });
 

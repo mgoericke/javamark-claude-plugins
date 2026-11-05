@@ -55,10 +55,12 @@ function parseArgs(argv) {
 
 function ensureGitignore(repo) {
   const file = path.join(repo, '.gitignore');
-  const line = '.evolve/worktrees/';
-  const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
-  if (current.split('\n').includes(line)) return;
-  fs.writeFileSync(file, current + (current && !current.endsWith('\n') ? '\n' : '') + line + '\n');
+  let current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  for (const line of ['.evolve/worktrees/', '.evolve/local/']) {
+    if (current.split('\n').includes(line)) continue;
+    current += (current && !current.endsWith('\n') ? '\n' : '') + line + '\n';
+  }
+  fs.writeFileSync(file, current);
 }
 
 function main() {
