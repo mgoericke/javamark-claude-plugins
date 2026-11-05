@@ -59,3 +59,39 @@ test('startApp times out and leaves no process', async () => {
   assert.equal(alive(pid), false);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('startApp fails fast when the child exits immediately', async () => {
+  const app = { kind: 'web', start: `node -e "console.error('boom'); process.exit(3)"`, url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 20000 };
+  const t0 = Date.now();
+  await assert.rejects(startApp(app, { cwd }), /exited \(code 3\).*[\s\S]*boom/);
+  assert.ok(Date.now() - t0 < 10000);
+});
+
+test('startApp does not report ready when a foreign server holds the port', async () => {
+  const net = await import('node:net');
+  const srv = (await import('node:http')).createServer((q, s) => s.end('foreign'));
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  const port = srv.address().port;
+  const app = { kind: 'web', start: `node -e "require('http').createServer().listen(process.env.PORT,'127.0.0.1').on('error',()=>process.exit(1))"`, url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 10000 };
+  try {
+    await assert.rejects(startApp(app, { cwd, port }), /already in use/);
+  } finally { srv.close(); void net; }
+});
+
+test('startApp reports a failing setup', async () => {
+  const app = { kind: 'web', setup: 'echo nope >&2; exit 2', start: 'true', url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 1000 };
+  await assert.rejects(startApp(app, { cwd }), /setup failed \(exit 2\)[\s\S]*nope/);
+});
+
+test('stop() kills grandchildren', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-app-'));
+  const pidFile = path.join(dir, 'gpid');
+  const js = `require('fs').writeFileSync('${pidFile}', String(process.pid));require('http').createServer((q,s)=>s.end('ok')).listen(process.env.PORT)`;
+  const app = { kind: 'web', start: `sh -c "node -e \\"${js}\\" & wait"`, url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 10000 };
+  const h = await startApp(app, { cwd: dir });
+  const gpid = Number(fs.readFileSync(pidFile, 'utf8'));
+  assert.equal(alive(gpid), true);
+  await h.stop();
+  assert.equal(alive(gpid), false);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

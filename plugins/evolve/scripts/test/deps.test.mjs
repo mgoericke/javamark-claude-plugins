@@ -34,3 +34,11 @@ test('importDep loads an installed dep', withCache(async () => {
   fs.writeFileSync(path.join(pkg, 'index.js'), 'export const x = 42;');
   assert.equal((await importDep('fakedep')).x, 42);
 }));
+
+test('importDep loads an ESM-only package with an import-only exports map', withCache(async () => {
+  const pkg = path.join(depsDir(), 'node_modules', 'esmonly');
+  fs.mkdirSync(path.join(pkg, 'dist'), { recursive: true });
+  fs.writeFileSync(path.join(pkg, 'package.json'), '{"name":"esmonly","type":"module","exports":{".":{"import":"./dist/i.js"}}}');
+  fs.writeFileSync(path.join(pkg, 'dist', 'i.js'), 'export const y = 7;');
+  assert.equal((await importDep('esmonly')).y, 7);
+}));

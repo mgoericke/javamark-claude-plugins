@@ -13,6 +13,14 @@ export function freePort() {
   });
 }
 
+function portInUse(port) {
+  return new Promise((resolve) => {
+    const sock = net.connect({ port, host: '127.0.0.1' });
+    sock.once('connect', () => { sock.destroy(); resolve(true); });
+    sock.once('error', () => resolve(false));
+  });
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function groupAlive(pid) {
@@ -29,13 +37,19 @@ async function answers(url) {
 
 export async function startApp(app, { cwd, port, log } = {}) {
   port ??= await freePort();
+  if (await portInUse(port)) throw new Error(`port ${port} is already in use`);
   const sub = (s) => s.replaceAll('{port}', String(port));
   const url = sub(app.url);
   const env = { ...process.env, PORT: String(port) };
   const tail = [];
   const logFd = log ? fs.openSync(log, 'a') : null;
 
+  let logClosed = false;
+  const closeLog = () => {
+    if (logFd !== null && !logClosed) { logClosed = true; try { fs.closeSync(logFd); } catch {} }
+  };
   const record = (chunk) => {
+    if (logClosed) return;
     if (logFd !== null) fs.writeSync(logFd, chunk);
     for (const line of chunk.toString().split('\n')) if (line) tail.push(line);
     while (tail.length > 20) tail.shift();
@@ -45,7 +59,7 @@ export async function startApp(app, { cwd, port, log } = {}) {
     const r = spawnSync(sub(app.setup), { cwd, env, shell: true, encoding: 'utf8' });
     record(`${r.stdout ?? ''}${r.stderr ?? ''}`);
     if (r.status !== 0) {
-      if (logFd !== null) fs.closeSync(logFd);
+      closeLog();
       throw new Error(`app setup failed (exit ${r.status})\n${tail.join('\n')}`);
     }
   }
@@ -54,7 +68,9 @@ export async function startApp(app, { cwd, port, log } = {}) {
   child.stdout.on('data', record);
   child.stderr.on('data', record);
   let exited = false;
-  const exitP = new Promise((resolve) => child.once('exit', () => { exited = true; resolve(); }));
+  let exitCode = null;
+  const exitP = new Promise((resolve) => child.once('exit', (code, sig) => { exited = true; exitCode = code ?? sig; resolve(); }));
+  const closeP = new Promise((resolve) => child.once('close', resolve));
   child.once('error', (e) => record(`${e.message}\n`));
 
   let stopping;
@@ -70,15 +86,19 @@ export async function startApp(app, { cwd, port, log } = {}) {
       }
     }
     await exitP;
-    if (logFd !== null) try { fs.closeSync(logFd); } catch {}
+    await Promise.race([closeP, sleep(1000)]);
+    closeLog();
   })();
 
   const deadline = Date.now() + (app.readyTimeoutMs ?? 60000);
   while (Date.now() < deadline && !exited) {
-    if (await answers(url)) return { url, port, stop };
-    await sleep(200);
+    const ok = await answers(url);
+    if (ok && !exited) return { url, port, stop };
+    if (!exited) await sleep(200);
   }
+  const early = exited;
   await stop();
+  if (early) throw new Error(`app exited (code ${exitCode}) before answering on ${url}\n${tail.join('\n')}`);
   const secs = Math.round((app.readyTimeoutMs ?? 60000) / 1000);
   throw new Error(`app did not answer on ${url} within ${secs} s\n${tail.join('\n')}`);
 }

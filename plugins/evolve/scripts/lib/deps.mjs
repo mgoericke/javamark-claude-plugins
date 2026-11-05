@@ -2,10 +2,9 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const scriptsDir = new URL('..', import.meta.url).pathname;
+const scriptsDir = fileURLToPath(new URL('..', import.meta.url));
 
 function pluginVersion() {
   const file = new URL('../../.claude-plugin/plugin.json', import.meta.url);
@@ -15,17 +14,6 @@ function pluginVersion() {
 export function depsDir(version = pluginVersion()) {
   const root = process.env.EVOLVE_CACHE || path.join(os.homedir(), '.cache', 'evolve');
   return path.join(root, version);
-}
-
-function chromiumCached() {
-  const roots = [
-    process.env.PLAYWRIGHT_BROWSERS_PATH,
-    path.join(os.homedir(), 'Library', 'Caches', 'ms-playwright'),
-    path.join(os.homedir(), '.cache', 'ms-playwright'),
-  ].filter(Boolean);
-  return roots.some((r) => {
-    try { return fs.readdirSync(r).some((d) => d.startsWith('chromium')); } catch { return false; }
-  });
 }
 
 export async function ensureDeps({ withLighthouse = false } = {}) {
@@ -38,15 +26,35 @@ export async function ensureDeps({ withLighthouse = false } = {}) {
   } else if (withLighthouse && !fs.existsSync(path.join(dir, 'node_modules', 'lighthouse'))) {
     execFileSync('npm', ['install', '--prefix', dir, '--no-audit', '--no-fund'], { stdio: 'inherit' });
   }
-  if (!chromiumCached()) {
-    execFileSync('npx', ['playwright', 'install', 'chromium'], { cwd: dir, stdio: 'inherit' });
-  }
+  execFileSync('npx', ['playwright', 'install', 'chromium'], { cwd: dir, stdio: 'inherit' });
 }
 
 export async function importDep(name) {
   const modDir = path.join(depsDir(), 'node_modules', name);
   if (!fs.existsSync(modDir)) throw new Error(`evolve: run /evolve start to install ${name}`);
-  const req = createRequire(path.join(depsDir(), 'noop.js'));
-  const entry = req.resolve(name);
-  return import(pathToFileURL(entry).href);
+  return import(pathToFileURL(entryOf(modDir)).href);
+}
+
+function pick(target) {
+  if (typeof target === 'string') return target;
+  if (Array.isArray(target)) return target.map(pick).find(Boolean);
+  if (target && typeof target === 'object') {
+    for (const k of ['import', 'node', 'default', 'require']) {
+      const r = pick(target[k]);
+      if (r) return r;
+    }
+  }
+  return undefined;
+}
+
+function entryOf(modDir) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(modDir, 'package.json'), 'utf8'));
+  let rel;
+  if (pkg.exports !== undefined) {
+    const ex = pkg.exports;
+    const dot = typeof ex === 'string' || Array.isArray(ex) || !Object.keys(ex).some((k) => k.startsWith('.')) ? ex : ex['.'];
+    rel = pick(dot);
+  }
+  rel ??= pkg.module ?? pkg.main ?? 'index.js';
+  return path.resolve(modDir, rel);
 }
