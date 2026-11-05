@@ -5,110 +5,102 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>evolve – Ablauf</title>
 <meta name="description" content="Wie das Plugin evolve arbeitet: Befehle, Runden, Leitplanken und die Bausteine dahinter.">
+<script>
+  // follow the system until the viewer picks a theme
+  if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.1.0/dist/basecoat.cdn.min.css">
 <style>
+/* same look as the dashboard: Basecoat tokens, evolve teal, marker yellow for "involved here" */
 :root {
-  --bg: #eef1f4; --surface: #ffffff; --ink: #16202b; --ink-soft: #4a5868; --ink-mute: #7a8796; --line: #d3dae2;
-  --accent: #0e6e74; --accent-soft: #d9eeee; --marker: #f5c542; --marker-soft: rgba(245, 197, 66, .28);
-  --ok: #2e7d4f; --warn: #a86e00; --fail: #b8402b;
-  --lane-you: #6b4fbb; --lane-main: #0e6e74; --lane-agent: #1d5fb4; --lane-script: #8a5a12; --lane-files: #5b6573;
+  --font-sans: "Geist", system-ui, sans-serif;
+  --surface: var(--card); --ink: var(--foreground); --ink-soft: var(--muted-foreground); --ink-mute: var(--muted-foreground); --line: var(--border); --bg: var(--muted);
+  --accent: oklch(.52 .1 195); --accent-soft: oklch(.95 .03 195);
+  --marker: oklch(.86 .16 90); --marker-soft: oklch(.86 .16 90 / .3);
+  --ok: oklch(.55 .13 150); --fail: oklch(.58 .2 27);
+  --lane-you: oklch(.55 .16 290); --lane-main: oklch(.52 .1 195); --lane-agent: oklch(.55 .14 250); --lane-script: oklch(.6 .12 65); --lane-files: oklch(.55 .02 250);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f151c; --surface: #17202a; --ink: #e5ecf2; --ink-soft: #a3b0bd; --ink-mute: #7d8a97; --line: #2a3644;
-    --accent: #4fb3b9; --accent-soft: #163c40; --marker: #f2c14e; --marker-soft: rgba(242, 193, 78, .22);
-    --ok: #5cc28a; --warn: #e0a83a; --fail: #ec7a63;
-    --lane-you: #a58cf0; --lane-main: #4fb3b9; --lane-agent: #6aa6f2; --lane-script: #d9a24d; --lane-files: #97a3b1;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f151c; --surface: #17202a; --ink: #e5ecf2; --ink-soft: #a3b0bd; --ink-mute: #7d8a97; --line: #2a3644;
-  --accent: #4fb3b9; --accent-soft: #163c40; --marker: #f2c14e; --marker-soft: rgba(242, 193, 78, .22);
-  --ok: #5cc28a; --warn: #e0a83a; --fail: #ec7a63;
-  --lane-you: #a58cf0; --lane-main: #4fb3b9; --lane-agent: #6aa6f2; --lane-script: #d9a24d; --lane-files: #97a3b1;
+.dark {
+  --accent: oklch(.74 .1 195); --accent-soft: oklch(.3 .05 195);
+  --marker: oklch(.84 .15 90); --marker-soft: oklch(.84 .15 90 / .22);
+  --ok: oklch(.75 .14 150); --fail: oklch(.72 .17 27);
+  --lane-you: oklch(.72 .13 290); --lane-main: oklch(.74 .1 195); --lane-agent: oklch(.72 .12 250); --lane-script: oklch(.78 .12 70); --lane-files: oklch(.72 .02 250);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 "Instrument Sans", system-ui, sans-serif; }
+body { margin: 0; background: var(--background); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 a { color: var(--accent); }
-button { font: inherit; color: inherit; }
 .page { max-width: 76rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
-header h1 { font-size: clamp(2rem, 1.4rem + 2.5vw, 3.2rem); line-height: 1; margin: 0; letter-spacing: -.02em; }
-header h1 b { background: linear-gradient(transparent 58%, var(--marker-soft) 58%); }
+header h1 { display: flex; align-items: center; gap: .6rem; font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem); font-weight: 600; line-height: 1.1; margin: 0; letter-spacing: -.03em; }
+header h1 svg { color: var(--accent); flex: none; }
 header p { max-width: 44rem; color: var(--ink-soft); margin: .7rem 0 0; }
 
 .controls { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin: 1.6rem 0 1.2rem; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 3px; }
-.seg button { border: 0; background: none; padding: .35rem .9rem; border-radius: 999px; cursor: pointer; color: var(--ink-soft); font-weight: 500; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
-.play { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: .4rem .9rem; cursor: pointer; font-weight: 600; }
-.play:hover { border-color: var(--ink); }
-.legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--ink-soft); margin-left: auto; }
-.legend span::before { content: ""; display: inline-block; width: .65rem; height: .65rem; border-radius: 50%; margin-right: .35rem; background: var(--c); vertical-align: -.05rem; }
+.btn[aria-pressed="true"], .btn[aria-pressed="true"]:hover { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .82rem; color: var(--ink-soft); margin: 0 0 0 auto; }
+.legend span::before { content: ""; display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .35rem; background: var(--c); vertical-align: -.05rem; }
 
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.5rem; align-items: start; }
-@media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .side { position: static !important; } }
+@media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .side { position: static !important; } .legend { margin-left: 0; } }
 
-.phase { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1rem 1.1rem; margin-bottom: 1rem; }
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius, .625rem); padding: 1rem 1rem 1.1rem; margin-bottom: 1rem; }
 .phase-head { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; margin-bottom: .8rem; }
-.phase-head code { font: 600 1.05rem "Instrument Sans", sans-serif; background: var(--accent-soft); color: var(--accent); padding: .1rem .55rem; border-radius: 6px; }
-.phase-head span { color: var(--ink-soft); font-size: .92rem; }
+.phase-head code { font: 600 1rem var(--font-sans); background: var(--accent-soft); color: var(--accent); padding: .1rem .55rem; border-radius: 6px; }
+.phase-head span { color: var(--ink-soft); font-size: .9rem; }
 
 .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
-.step { position: relative; display: grid; grid-template-columns: 7.2rem minmax(0, 1fr); gap: .8rem; align-items: start; padding: .6rem .7rem; border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 8px; background: var(--surface); cursor: pointer; text-align: left; width: 100%; }
-.step:hover { border-color: var(--ink-mute); border-left-color: var(--c); }
-.step:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.step.is-active { box-shadow: 0 0 0 2px var(--c) inset; background: color-mix(in srgb, var(--c) 8%, var(--surface)); }
+.step { position: relative; display: grid; grid-template-columns: 7.2rem minmax(0, 1fr); gap: .8rem; align-items: start; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: calc(var(--radius, .625rem) - 2px); background: var(--surface); cursor: pointer; text-align: left; width: 100%; color: inherit; font: inherit; box-shadow: inset 3px 0 0 var(--c); }
+.step:hover { background: var(--bg); }
+.step:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.step.is-active { box-shadow: inset 3px 0 0 var(--c), 0 0 0 2px var(--c); background: color-mix(in oklch, var(--c) 7%, var(--surface)); }
 .step.is-lit { background: var(--marker-soft); }
-.step .who { font-size: .78rem; font-weight: 600; color: var(--c); text-transform: none; padding-top: .15rem; }
+.step .who { font-size: .76rem; font-weight: 500; color: var(--c); padding-top: .15rem; }
 .step strong { display: block; font-weight: 600; }
-.step small { display: block; color: var(--ink-soft); font-size: .88rem; }
+.step small { display: block; color: var(--ink-soft); font-size: .86rem; }
 .step[hidden] { display: none; }
-.step.decision { border-style: dashed; border-left-style: solid; }
-.only { font-size: .72rem; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem; vertical-align: .1rem; }
+.step.decision { border-style: dashed; }
+.only { font-size: .7rem; font-weight: 500; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem; vertical-align: .1rem; }
 
-.loop { position: relative; border: 2px dashed var(--line); border-radius: 12px; padding: .9rem .8rem .8rem 2.4rem; margin: .5rem 0; }
-.loop-label { position: absolute; top: -.75rem; left: 1rem; background: var(--surface); padding: 0 .45rem; font-size: .82rem; font-weight: 600; color: var(--ink-soft); }
+.loop { position: relative; border: 1.5px dashed var(--line); border-radius: var(--radius, .625rem); padding: .9rem .8rem .8rem 2.4rem; margin: .5rem 0; }
+.loop-label { position: absolute; top: -.75rem; left: 1rem; background: var(--surface); padding: 0 .45rem; font-size: .8rem; font-weight: 500; color: var(--ink-soft); }
 .loop svg { position: absolute; left: .55rem; top: 1rem; bottom: 1rem; height: calc(100% - 2rem); width: 1.2rem; color: var(--ink-mute); }
-.branch { margin: .1rem 0 0 7.2rem; padding-left: .8rem; font-size: .88rem; color: var(--ink-soft); }
+.branch { margin: .1rem 0 0 7.2rem; padding-left: .8rem; font-size: .86rem; color: var(--ink-soft); }
 .branch b { color: var(--fail); font-weight: 600; }
 .branch em { font-style: normal; color: var(--ok); font-weight: 600; }
 
 .side { position: sticky; top: 1rem; display: grid; gap: 1rem; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem; }
-.card h2 { font-size: 1.05rem; margin: 0 0 .6rem; }
-.detail-who { font-size: .82rem; font-weight: 600; color: var(--c, var(--accent)); }
-.detail h3 { margin: .1rem 0 .4rem; font-size: 1.2rem; line-height: 1.25; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius, .625rem); padding: 1rem; }
+.panel h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; }
+.detail-who { font-size: .8rem; font-weight: 500; color: var(--c, var(--accent)); margin: 0; }
+.detail h3 { margin: .1rem 0 .4rem; font-size: 1.15rem; font-weight: 600; line-height: 1.25; letter-spacing: -.01em; }
 .detail p { margin: 0 0 .6rem; color: var(--ink-soft); }
 .detail ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); }
-.tree { list-style: none; margin: 0; padding: 0; font-size: .92rem; }
+.tree { list-style: none; margin: 0; padding: 0; font-size: .9rem; }
 .tree li { margin: 0; }
-.tree .dir { color: var(--ink-mute); font-weight: 600; margin-top: .45rem; }
-.tree button { display: flex; width: 100%; justify-content: space-between; gap: .5rem; border: 0; background: none; padding: .22rem .45rem; border-radius: 6px; cursor: pointer; text-align: left; }
+.tree .dir { color: var(--ink-mute); font-weight: 500; font-size: .8rem; margin-top: .55rem; }
+.tree button { display: flex; width: 100%; justify-content: space-between; gap: .5rem; border: 0; background: none; padding: .22rem .45rem; border-radius: 6px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
 .tree button:hover { background: var(--bg); }
 .tree button.is-lit { background: var(--marker-soft); font-weight: 600; }
 .tree button.is-picked { outline: 2px solid var(--marker); }
-.tree button span { color: var(--ink-mute); font-size: .8rem; white-space: nowrap; }
-.hint { font-size: .85rem; color: var(--ink-mute); margin: .6rem 0 0; }
-.theme { position: fixed; right: 1rem; top: 1rem; }
+.tree button span { color: var(--ink-mute); font-size: .78rem; white-space: nowrap; }
+.hint { font-size: .82rem; color: var(--ink-mute); margin: .6rem 0 0; }
 @media (prefers-reduced-motion: no-preference) { .step { transition: background-color .2s ease, box-shadow .2s ease; } }
 </style>
 </head>
 <body>
 <div class="page">
   <header>
-    <h1><b>evolve</b> – so läuft ein Lauf</h1>
+    <h1><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18c3-9 7-12 16-12"/><path d="M15 3l5 3-3 5"/><circle cx="4" cy="18" r="2"/></svg>evolve: so läuft ein Lauf</h1>
     <p>Ein Befehl, fünf Unterbefehle. Runde für Runde eine mutige Idee (oder ein Modernisierungsschritt), nach jedem Block hältst du an. Klick auf einen Schritt zeigt, was passiert und welche Bausteine des Plugins beteiligt sind; ein Klick auf einen Baustein zeigt, wo er gebraucht wird.</p>
   </header>
 
   <div class="controls">
-    <span class="seg" role="group" aria-label="Modus">
-      <button type="button" data-mode="invent" aria-pressed="true">invent</button><button type="button" data-mode="modernize" aria-pressed="false">modernize</button>
-    </span>
-    <button type="button" class="play" data-play>▶ Ablauf abspielen</button>
-    <span class="seg" role="group" aria-label="Darstellung">
-      <button type="button" data-theme-choice="light" aria-pressed="false">Hell</button><button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
-    </span>
+    <div class="button-group" role="group" aria-label="Modus">
+      <button type="button" class="btn" data-variant="outline" data-size="sm" data-mode="invent" aria-pressed="true">invent</button><button type="button" class="btn" data-variant="outline" data-size="sm" data-mode="modernize" aria-pressed="false">modernize</button>
+    </div>
+    <button type="button" class="btn" data-size="sm" data-play>▶ Ablauf abspielen</button>
+    <button type="button" class="btn" data-variant="outline" data-size="icon-sm" data-theme-toggle aria-label="Hell oder dunkel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
     <p class="legend" aria-label="Wer handelt">
       <span style="--c: var(--lane-you)">Du</span>
       <span style="--c: var(--lane-main)">Claude (Hauptsitzung)</span>
@@ -121,12 +113,12 @@ header p { max-width: 44rem; color: var(--ink-soft); margin: .7rem 0 0; }
   <div class="layout">
     <main id="flow"></main>
     <aside class="side">
-      <section class="card detail" aria-live="polite" id="detail">
+      <section class="panel detail" aria-live="polite" id="detail">
         <p class="detail-who">Schritt wählen</p>
         <h3>Klick auf einen Schritt links</h3>
         <p>Hier steht dann, was in dem Schritt passiert, was geprüft wird und welche Dateien entstehen.</p>
       </section>
-      <section class="card">
+      <section class="panel">
         <h2>Bausteine des Plugins</h2>
         <ul class="tree" id="tree"></ul>
         <p class="hint">Gelb markiert: an diesem Schritt beteiligt.</p>
@@ -346,12 +338,7 @@ document.addEventListener('click', function (e) {
   var part = e.target.closest('[data-part]'); if (part) { showPart(part.dataset.part); return; }
   var m = e.target.closest('[data-mode]'); if (m) { mode = m.dataset.mode; refresh(); return; }
   if (e.target.closest('[data-play]')) { play(); return; }
-  var t = e.target.closest('[data-theme-choice]');
-  if (t) {
-    var on = document.documentElement.dataset.theme === t.dataset.themeChoice;
-    if (on) delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t.dataset.themeChoice;
-    document.querySelectorAll('[data-theme-choice]').forEach(function (b) { b.setAttribute('aria-pressed', String(!on && b === t)); });
-  }
+  if (e.target.closest('[data-theme-toggle]')) document.documentElement.classList.toggle('dark');
 });
 render();
 show('interview');

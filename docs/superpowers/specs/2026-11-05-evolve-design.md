@@ -151,6 +151,9 @@ Soft (logged and shown, trigger the tidy-up round):
 ### Dashboard
 
 - Node server without a build step (`node server.mjs`), vanilla HTML/JS, localhost only.
+- Look: [Basecoat](https://basecoatui.com) (shadcn/ui's look as plain CSS classes, MIT) plus the Geist
+  font, both vendored into `dashboard/vendor/` so the dashboard works offline. No Tailwind runtime.
+  Light and dark follow the system, with a toggle. `docs/dashboard-mock.html` shows the target.
 - Starting a round's application: a git worktree per round tag (cached under `.evolve/worktrees/`, git
   ignored). `/evolve start` asks for an optional setup command (e.g. `npm ci`) and a start command with a
   `{port}` placeholder or `PORT` variable; at most two rounds run at a time, oldest stopped first.
@@ -176,7 +179,8 @@ plugins/evolve/
   skills/evolve/SKILL.md               the loop protocol, both modes, guardrail rules
   references/  compass-interview.md  idea-rules.md  modernize-playbook.md  round-summary-schema.md
   scripts/     package.json  scan.mjs  check.mjs  ship.mjs  usage.mjs
-  dashboard/   server.mjs  index.html  app.js  app.css
+  dashboard/   server.mjs  index.html  app.js  app.css  vendor/ (basecoat.css, Geist)
+  docs/        flow.html  dashboard-mock.html   interactive flow diagram and dashboard mock
 ```
 
 Node dependencies (Playwright, pixelmatch, pngjs; Lighthouse optional) are installed once by
@@ -199,6 +203,7 @@ plugin update replaces the plugin folder; Playwright's Chromium is reused when p
 - Built as a plugin in `mgoericke/javamark-claude-plugins`, delivered as a pull request.
 - Start with web UIs; backend services and new apps later.
 - Dashboard with usage, models, round navigation, round state in the main area, change overlay.
+- A ready-made UI framework for a prettier dashboard (Basecoat chosen after a comparison, see Dashboard).
 
 ## My calls (Claude) — open for Mark to change
 
@@ -218,6 +223,6 @@ plugin update replaces the plugin folder; Playwright's Chromium is reused when p
 
 ## Left to the builder
 
-- Exact wording of the skill and commands, the dashboard's look (plain, readable, light and dark).
+- Exact wording of the skill and commands; dashboard details beyond the mock.
 - Route discovery details (sitemap, links, framework routes) and defaults for thresholds.
 - How many fix attempts before a revert (suggested: 3).

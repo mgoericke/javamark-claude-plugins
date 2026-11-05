@@ -5,148 +5,153 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>evolve – Dashboard (Mock)</title>
 <meta name="description" content="Entwurf des lokalen Dashboards von evolve: Verbrauch, Runden, der Stand einer Runde und ihre Änderungen.">
+<script>
+  // follow the system until the viewer picks a theme
+  if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<!-- the real dashboard ships this file inside the plugin, so it works offline -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.1.0/dist/basecoat.cdn.min.css">
 <style>
 :root {
-  --bg: #eef1f4; --surface: #ffffff; --ink: #16202b; --ink-soft: #4a5868; --ink-mute: #7a8796; --line: #d3dae2;
-  --accent: #0e6e74; --accent-soft: #d9eeee; --marker: #f5c542; --marker-soft: rgba(245, 197, 66, .32);
-  --ok: #2e7d4f; --warn: #a86e00; --fail: #b8402b;
-  --m1: #0e6e74; --m2: #6b4fbb; --m3: #c27a1a;
+  --font-sans: "Geist", system-ui, sans-serif;
+  --evolve: oklch(.52 .1 195); --evolve-soft: oklch(.95 .03 195);
+  --marker: oklch(.86 .16 90); --marker-soft: oklch(.86 .16 90 / .3);
+  --ok: oklch(.55 .13 150); --warn: oklch(.62 .14 70); --fail: oklch(.58 .2 27);
+  --m1: oklch(.52 .1 195); --m2: oklch(.55 .16 290); --m3: oklch(.7 .13 70);
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0f151c; --surface: #17202a; --ink: #e5ecf2; --ink-soft: #a3b0bd; --ink-mute: #7d8a97; --line: #2a3644;
-    --accent: #4fb3b9; --accent-soft: #163c40; --marker: #f2c14e; --marker-soft: rgba(242, 193, 78, .26);
-    --ok: #5cc28a; --warn: #e0a83a; --fail: #ec7a63; --m1: #4fb3b9; --m2: #a58cf0; --m3: #e0a83a;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #0f151c; --surface: #17202a; --ink: #e5ecf2; --ink-soft: #a3b0bd; --ink-mute: #7d8a97; --line: #2a3644;
-  --accent: #4fb3b9; --accent-soft: #163c40; --marker: #f2c14e; --marker-soft: rgba(242, 193, 78, .26);
-  --ok: #5cc28a; --warn: #e0a83a; --fail: #ec7a63; --m1: #4fb3b9; --m2: #a58cf0; --m3: #e0a83a;
+.dark {
+  --evolve: oklch(.74 .1 195); --evolve-soft: oklch(.3 .05 195);
+  --marker: oklch(.84 .15 90); --marker-soft: oklch(.84 .15 90 / .24);
+  --ok: oklch(.75 .14 150); --warn: oklch(.8 .13 75); --fail: oklch(.72 .17 27);
+  --m1: oklch(.74 .1 195); --m2: oklch(.72 .13 290); --m3: oklch(.8 .12 75);
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/1.45 "Instrument Sans", system-ui, sans-serif; }
-button { font: inherit; color: inherit; }
-.mock-note { background: var(--marker-soft); text-align: center; font-size: .82rem; padding: .3rem 1rem; }
+body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-sans); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted-foreground); }
+.mock-note { background: var(--marker-soft); text-align: center; font-size: .8rem; padding: .3rem 1rem; margin: 0; }
 
-/* top bar: the run, the usage, the models */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1.6rem; padding: .7rem 1rem; background: var(--surface); border-bottom: 1px solid var(--line); }
-.brand { font-weight: 700; font-size: 1.25rem; letter-spacing: -.01em; }
-.brand b { background: linear-gradient(transparent 58%, var(--marker-soft) 58%); }
-.run { color: var(--ink-soft); }
-.run strong { color: var(--ink); }
-.chip { display: inline-block; border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 0 .55rem; font-size: .8rem; font-weight: 600; }
-.state { display: inline-flex; align-items: center; gap: .4rem; font-size: .9rem; }
-.state::before { content: ""; width: .55rem; height: .55rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 var(--ok); }
-@media (prefers-reduced-motion: no-preference) { .state::before { animation: pulse 2s infinite; } }
-@keyframes pulse { 70% { box-shadow: 0 0 0 .4rem transparent; } }
-.usage { margin-left: auto; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; }
-.usage-num { font-variant-numeric: tabular-nums; }
-.usage-num b { font-size: 1.15rem; }
-.usage-num small { display: block; color: var(--ink-mute); font-size: .76rem; }
-.models { display: grid; gap: .2rem; min-width: 13rem; }
-.bar { display: flex; height: .5rem; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--bg); }
-.bar span { background: var(--c); }
-.models ul { list-style: none; display: flex; flex-wrap: wrap; gap: .1rem .8rem; margin: 0; padding: 0; font-size: .78rem; color: var(--ink-soft); }
-.models li::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 2px; background: var(--c); margin-right: .3rem; }
-.theme { border: 1px solid var(--line); background: none; border-radius: 8px; padding: .25rem .55rem; cursor: pointer; }
+/* header: run identity on the left, usage at a glance below */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1.5rem; padding: .75rem 1.25rem; border-bottom: 1px solid var(--border); }
+.logo { display: flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.05rem; }
+.logo svg { color: var(--evolve); }
+.crumbs { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.crumbs .sep { color: var(--border); }
+.live { display: inline-flex; align-items: center; gap: .4rem; }
+.live::before { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: var(--ok); }
+@media (prefers-reduced-motion: no-preference) { .live::before { animation: pulse 2s infinite; } }
+@keyframes pulse { 50% { opacity: .35; } }
+.top-end { margin-left: auto; display: flex; gap: .5rem; align-items: center; }
 
-/* left: the rounds, main: the selected round */
-.shell { display: grid; grid-template-columns: 17rem minmax(0, 1fr); min-height: calc(100% - 7rem); }
-.rounds { border-right: 1px solid var(--line); background: var(--surface); padding: .8rem .6rem 2rem; overflow-y: auto; }
-.block-title { font-size: .78rem; font-weight: 600; color: var(--ink-mute); margin: .9rem .5rem .3rem; display: flex; justify-content: space-between; }
-.block-title:first-child { margin-top: 0; }
-.round { display: grid; grid-template-columns: 2.4rem minmax(0, 1fr) auto; gap: .4rem; align-items: center; width: 100%; text-align: left; border: 0; background: none; border-radius: 8px; padding: .45rem .5rem; cursor: pointer; }
-.round:hover { background: var(--bg); }
-.round[aria-current="true"] { background: var(--accent-soft); }
-.round:focus-visible { outline: 3px solid var(--accent); outline-offset: -2px; }
-.round .no { font-variant-numeric: tabular-nums; color: var(--ink-mute); font-size: .82rem; }
-.round .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.round .tag { font-size: .7rem; color: var(--ink-mute); display: block; }
-.dot { width: 1.1rem; height: 1.1rem; border-radius: 50%; display: inline-grid; place-items: center; font-size: .7rem; font-weight: 700; color: var(--surface); }
-.dot.ok { background: var(--ok); }
-.dot.reverted { background: var(--fail); }
-.dot.running { background: none; border: 2px solid var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.6fr); gap: .75rem; padding: 1rem 1.25rem 0; }
+.kpi { padding: .85rem 1rem; border: 1px solid var(--border); border-radius: var(--radius, .625rem); background: var(--card); }
+.kpi p { margin: 0; }
+.kpi .label { font-size: .8rem; color: var(--muted-foreground); }
+.kpi .value { font-size: 1.6rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.25; }
+.kpi .hint { font-size: .75rem; color: var(--muted-foreground); }
+.stack { display: flex; height: .5rem; gap: 2px; border-radius: 999px; overflow: hidden; margin: .55rem 0 .45rem; }
+.stack span { background: var(--c); }
+.legend { list-style: none; display: flex; flex-wrap: wrap; gap: .15rem .9rem; margin: 0; padding: 0; font-size: .78rem; }
+.legend li::before { content: ""; display: inline-block; width: .55rem; height: .55rem; border-radius: 2px; background: var(--c); margin-right: .35rem; }
+.legend b { font-weight: 500; }
+
+/* body: rounds timeline left, the selected round right */
+.shell { display: grid; grid-template-columns: 17.5rem minmax(0, 1fr); gap: 1.25rem; padding: 1rem 1.25rem 2rem; align-items: start; }
+.timeline { position: sticky; top: 1rem; border: 1px solid var(--border); border-radius: var(--radius, .625rem); background: var(--sidebar); padding: .5rem; max-height: calc(100vh - 2rem); overflow-y: auto; }
+.timeline h3 { display: flex; justify-content: space-between; font-size: .75rem; font-weight: 500; color: var(--muted-foreground); margin: .75rem .5rem .25rem; }
+.timeline h3:first-child { margin-top: .25rem; }
+.round { position: relative; display: grid; grid-template-columns: 1.25rem minmax(0, 1fr) auto; gap: .6rem; align-items: center; width: 100%; text-align: left; border: 0; background: none; border-radius: calc(var(--radius, .625rem) - 2px); padding: .45rem .5rem; cursor: pointer; color: inherit; font: inherit; }
+.round:hover { background: var(--sidebar-accent); }
+.round[aria-current="true"] { background: var(--sidebar-accent); box-shadow: inset 2px 0 0 var(--evolve); }
+.round:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+/* the rail that joins the rounds of a block */
+.round:not(:last-child)::after { content: ""; position: absolute; left: calc(.5rem + .625rem - 1px); top: 1.6rem; bottom: -.45rem; width: 2px; background: var(--border); }
+.round .t { display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.round .sub { display: block; font-size: .72rem; color: var(--muted-foreground); }
+.round .no { font-size: .72rem; color: var(--muted-foreground); }
+.dot { position: relative; z-index: 1; width: 1.25rem; height: 1.25rem; border-radius: 50%; display: grid; place-items: center; background: var(--sidebar); border: 2px solid var(--c); color: var(--c); }
+.dot svg { width: .7rem; height: .7rem; }
+.dot.ok { --c: var(--ok); } .dot.reverted { --c: var(--fail); } .dot.base { --c: var(--muted-foreground); } .dot.running { --c: var(--evolve); }
 @media (prefers-reduced-motion: no-preference) { .dot.running { border-right-color: transparent; animation: spin 1s linear infinite; } }
 @keyframes spin { to { transform: rotate(360deg); } }
-.dot.base { background: var(--ink-mute); }
+.block { display: grid; }
 
-.main { padding: 1.1rem 1.4rem 2rem; min-width: 0; }
-.round-head { display: flex; flex-wrap: wrap; gap: .3rem 1rem; align-items: baseline; }
-.round-head h1 { margin: 0; font-size: clamp(1.4rem, 1rem + 1.4vw, 2rem); line-height: 1.15; letter-spacing: -.01em; }
-.round-head .meta { color: var(--ink-mute); font-size: .88rem; }
-.why { margin: .35rem 0 .7rem; color: var(--ink-soft); max-width: 60rem; }
-.compass { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .8rem; }
-.compass span { font-size: .8rem; border: 1px solid var(--line); border-radius: 999px; padding: .05rem .55rem; color: var(--ink-soft); }
-.compass span::before { content: "✓ "; color: var(--ok); }
+.main { display: grid; gap: 1rem; min-width: 0; }
+.head h1 { margin: 0; font-size: clamp(1.35rem, 1rem + 1vw, 1.75rem); font-weight: 600; letter-spacing: -.02em; line-height: 1.2; }
+.head .meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-bottom: .4rem; }
+.head .why { margin: .4rem 0 0; color: var(--muted-foreground); max-width: 62ch; }
+.checks { display: flex; flex-wrap: wrap; gap: .4rem; }
+.check { display: inline-flex; gap: .4rem; align-items: baseline; border: 1px solid var(--border); border-radius: 999px; padding: .15rem .65rem; font-size: .8rem; }
+.check b { font-weight: 600; color: var(--c); }
+.check small { color: var(--muted-foreground); }
+.check.ok { --c: var(--ok); } .check.warn { --c: var(--warn); border-color: color-mix(in oklch, var(--warn) 50%, var(--border)); } .check.fail { --c: var(--fail); border-color: color-mix(in oklch, var(--fail) 50%, var(--border)); }
 
-.checks { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
-.check { display: inline-flex; align-items: center; gap: .35rem; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .25rem .6rem; font-size: .85rem; }
-.check b { font-variant-numeric: tabular-nums; }
-.check.ok b { color: var(--ok); } .check.warn b { color: var(--warn); } .check.fail b { color: var(--fail); }
-.check small { color: var(--ink-mute); }
+.viewer > header { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.view-tools { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-left: auto; }
+.view-tools label { display: inline-flex; align-items: center; gap: .5rem; font-weight: 500; cursor: pointer; }
+.view-tools input[role=switch]:checked { background: var(--marker); border-color: var(--marker); }
+.btn[aria-pressed="true"], .btn[aria-pressed="true"]:hover { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
 
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; margin-bottom: .6rem; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); padding: 3px; }
-.seg button { border: 0; background: none; padding: .28rem .8rem; border-radius: 999px; cursor: pointer; color: var(--ink-soft); font-weight: 500; }
-.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
-.overlay-toggle { display: inline-flex; align-items: center; gap: .5rem; cursor: pointer; font-weight: 600; margin-left: auto; }
-.switch { width: 2.4rem; height: 1.35rem; border-radius: 999px; background: var(--line); position: relative; border: 0; cursor: pointer; padding: 0; }
-.switch::after { content: ""; position: absolute; top: .18rem; left: .18rem; width: 1rem; height: 1rem; border-radius: 50%; background: var(--surface); transition: transform .15s; }
-.switch[aria-checked="true"] { background: var(--marker); }
-.switch[aria-checked="true"]::after { transform: translateX(1.05rem); }
+.browser { border: 1px solid var(--border); border-radius: calc(var(--radius, .625rem) - 2px); overflow: hidden; }
+.browser-bar { display: flex; align-items: center; gap: .6rem; padding: .4rem .7rem; border-bottom: 1px solid var(--border); background: var(--muted); font-size: .78rem; color: var(--muted-foreground); }
+.browser-bar i { width: .55rem; height: .55rem; border-radius: 50%; background: var(--border); flex: none; }
+.browser-bar .url { flex: 1; background: var(--background); border-radius: 6px; padding: .1rem .6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage { display: grid; place-items: start center; padding: 1rem; background: radial-gradient(var(--border) 1px, transparent 1px) 0 0 / 14px 14px; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.compare figure { margin: 0; border: 1px solid var(--border); border-radius: calc(var(--radius, .625rem) - 2px); overflow: hidden; }
+.compare figcaption { font-size: .78rem; color: var(--muted-foreground); padding: .35rem .7rem; background: var(--muted); border-bottom: 1px solid var(--border); }
 
-/* the round's app, as the dashboard shows it from the round's tag */
-.frame { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.frame-bar { display: flex; align-items: center; gap: .6rem; padding: .45rem .8rem; border-bottom: 1px solid var(--line); font-size: .82rem; color: var(--ink-mute); }
-.frame-bar .url { flex: 1; background: var(--bg); border-radius: 6px; padding: .15rem .6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stage { display: grid; place-items: start center; padding: 1rem; background: repeating-linear-gradient(45deg, var(--bg) 0 10px, transparent 10px 20px); }
-.app { position: relative; width: 100%; max-width: 54rem; background: #f7f9f6; color: #10231a; border-radius: 6px; box-shadow: 0 1px 3px rgb(0 0 0 / .12); overflow: hidden; font-size: 13px; }
+/* sketch of the app under test, drawn from the round's features */
+.app { position: relative; width: 100%; max-width: 50rem; background: #f7f9f6; color: #10231a; border-radius: 6px; box-shadow: 0 1px 2px rgb(0 0 0 / .1); overflow: hidden; font-size: 13px; }
 .stage.mobile .app { max-width: 390px; }
+.compare .app { font-size: 11px; }
 .app-nav { background: #1c5530; color: #fff; padding: .55rem .9rem; font-weight: 700; display: flex; justify-content: space-between; }
 .app-body { padding: .9rem; display: grid; gap: .7rem; }
 .app h2 { margin: 0; font-size: 1.4rem; }
 .app-actions { display: flex; gap: .35rem; flex-wrap: wrap; }
-.stage.mobile .app-actions { flex-wrap: nowrap; overflow: hidden; }
+.stage.mobile .app-actions, .app[data-features~="band"] .app-actions { flex-wrap: nowrap; overflow: hidden; }
 .app-actions span { border: 1px solid #c9d4cc; border-radius: 6px; padding: .2rem .5rem; white-space: nowrap; background: #fff; }
 .match { display: grid; grid-template-columns: 3rem 1fr auto 1fr; gap: .5rem; align-items: center; background: #fff; border: 1px solid #dfe6e1; border-radius: 6px; padding: .5rem .6rem; }
 .match .score { font-weight: 700; background: #10231a; color: #fff; border-radius: 4px; padding: .1rem .45rem; }
-.match .away { text-align: left; } .match .home { text-align: right; }
-.tension { grid-column: 2 / -1; display: flex; gap: 2px; align-items: center; font-size: .72rem; color: #4d6357; }
-.tension i { width: .9rem; height: .35rem; background: #c9d4cc; border-radius: 2px; } .tension i.on { background: #1c5530; }
-.feature { display: none; }
+.match .home { text-align: right; }
+.feature { display: none; grid-column: 2 / -1; font-size: .74rem; color: #4d6357; }
+.feature.tension { gap: 2px; align-items: center; }
+.feature.tension i { width: .9rem; height: .35rem; background: #c9d4cc; border-radius: 2px; } .feature.tension i.on { background: #1c5530; }
 .app[data-features~="tension"] .feature.tension { display: flex; }
-.app[data-features~="stakes"] .feature.stakes { display: block; grid-column: 2 / -1; font-size: .74rem; color: #4d6357; }
-.app[data-features~="weather"] .feature.weather { display: block; grid-column: 2 / -1; font-size: .74rem; color: #4d6357; }
-.app[data-features~="band"] .app-actions { flex-wrap: nowrap; overflow: hidden; }
+.app[data-features~="stakes"] .feature.stakes, .app[data-features~="weather"] .feature.weather { display: block; }
 
 .marks { position: absolute; inset: 0; pointer-events: none; display: none; }
 .show-overlay .marks { display: block; }
 .mark { position: absolute; background: var(--marker-soft); outline: 2px solid var(--marker); border-radius: 4px; }
-.mark span { position: absolute; top: -1.35rem; left: 0; background: var(--marker); color: #1b1600; font-size: .7rem; font-weight: 700; padding: .05rem .4rem; border-radius: 4px; white-space: nowrap; }
+.mark span { position: absolute; bottom: calc(100% + 3px); right: -2px; background: var(--marker); color: #1b1600; font-size: .7rem; font-weight: 600; padding: 0 .4rem; border-radius: 4px; white-space: nowrap; }
 
-.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; margin-top: 1rem; }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; }
-.panel h2 { font-size: .95rem; margin: 0 0 .5rem; }
-.files { list-style: none; margin: 0; padding: 0; font-size: .86rem; }
-.files li { display: flex; justify-content: space-between; gap: .6rem; padding: .15rem 0; border-bottom: 1px dashed var(--line); }
-.files .plus { color: var(--ok); } .files .minus { color: var(--fail); }
-.cost dl { display: grid; grid-template-columns: auto 1fr; gap: .15rem .9rem; margin: 0; font-size: .88rem; }
-.cost dt { color: var(--ink-mute); } .cost dd { margin: 0; font-variant-numeric: tabular-nums; }
-.reverted-note { border-left: 4px solid var(--fail); background: var(--surface); padding: .6rem .9rem; border-radius: 6px; margin-bottom: 1rem; }
+.lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: .3rem 1rem; margin: 0; }
+.facts dt { color: var(--muted-foreground); } .facts dd { margin: 0; }
+.diff .plus { color: var(--ok); } .diff .minus { color: var(--fail); }
+.trend svg { width: 100%; height: auto; display: block; overflow: visible; }
+.trend .grid { stroke: var(--border); }
+.trend .limit { stroke: var(--fail); stroke-dasharray: 4 4; }
+.trend .line { stroke: var(--evolve); stroke-width: 2; fill: none; }
+.trend text { fill: var(--muted-foreground); font-size: 11px; font-family: var(--font-sans); }
+.trend circle { fill: var(--evolve); stroke: var(--card); stroke-width: 2; }
+.trend circle.gone { fill: var(--card); stroke: var(--fail); }
+.trend circle.sel { r: 6; }
 
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } .kpis .models { grid-column: 1 / -1; } }
+@media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 860px) {
-  .shell { grid-template-columns: 1fr; }
-  .rounds { border-right: 0; border-bottom: 1px solid var(--line); display: flex; gap: .3rem; overflow-x: auto; padding: .5rem; }
-  .block-title { display: none; }
+  .shell { grid-template-columns: 1fr; padding: .75rem; }
+  .kpis { padding: .75rem .75rem 0; }
+  .top { padding: .65rem .75rem; }
+  .timeline { position: static; display: flex; gap: .25rem; overflow-x: auto; max-height: none; }
+  .block { display: flex; gap: .25rem; }
+  .timeline h3, .round .t, .round .sub, .round::after { display: none !important; }
   .round { grid-template-columns: auto auto; width: auto; flex: none; }
-  .round .t, .round .tag { display: none; }
-  .usage { margin-left: 0; }
-  .lower { grid-template-columns: 1fr; }
-  .main { padding: 1rem; }
+  .lower, .compare { grid-template-columns: 1fr; }
+  .kpi .value { font-size: 1.3rem; }
 }
 </style>
 </head>
@@ -154,141 +159,202 @@ button { font: inherit; color: inherit; }
 <p class="mock-note">Entwurf mit Beispieldaten: ein Lauf auf Rasen-Radar, 3 Blöcke × 5 Runden.</p>
 
 <header class="top">
-  <span class="brand"><b>evolve</b></span>
-  <span class="run"><strong>rasen-radar</strong> · Lauf „herbst“ <span class="chip">invent</span></span>
-  <span class="run">Block <strong>2</strong> von 3 · Runde <strong>8</strong> von 15</span>
-  <span class="state">Runde 8 baut gerade</span>
-  <div class="usage">
-    <span class="usage-num"><b>4,82 Mio.</b><small>Tokens gesamt</small></span>
-    <span class="usage-num"><b>≈ 31 €</b><small>Schätzung, Preise anpassbar</small></span>
-    <div class="models" aria-label="Verbrauch nach Modell">
-      <div class="bar"><span style="--c: var(--m1); flex: 71"></span><span style="--c: var(--m2); flex: 21"></span><span style="--c: var(--m3); flex: 8"></span></div>
-      <ul><li style="--c: var(--m1)">Opus 5.5 71 %</li><li style="--c: var(--m2)">Sonnet 5.5 21 %</li><li style="--c: var(--m3)">Haiku 5.5 8 %</li></ul>
-    </div>
-    <button type="button" class="theme" data-theme-toggle aria-label="Hell oder dunkel">◐</button>
-  </div>
+  <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18c3-9 7-12 16-12"/><path d="M15 3l5 3-3 5"/><circle cx="4" cy="18" r="2"/></svg>evolve</span>
+  <span class="crumbs"><b>rasen-radar</b><span class="sep">/</span><span>Lauf „herbst“</span><span class="badge" data-variant="outline">invent</span></span>
+  <span class="live muted">Runde 8 baut gerade</span>
+  <span class="top-end">
+    <span class="muted num">Block 2 von 3</span>
+    <button type="button" class="btn" data-variant="outline" data-size="icon-sm" data-theme-toggle aria-label="Hell oder dunkel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+  </span>
 </header>
 
+<section class="kpis" aria-label="Überblick">
+  <div class="kpi"><p class="label">Runden</p><p class="value num">7 / 15</p><p class="hint">6 ausgeliefert, 1 zurückgedreht</p></div>
+  <div class="kpi"><p class="label">Tokens</p><p class="value num">4,82 Mio.</p><p class="hint">davon 71 % aus dem Cache</p></div>
+  <div class="kpi"><p class="label">Kosten</p><p class="value num">≈ 31 €</p><p class="hint">Schätzung, Preise anpassbar</p></div>
+  <div class="kpi"><p class="label">Lighthouse</p><p class="value num">94</p><p class="hint">Runde 0: 94, Grenze 89</p></div>
+  <div class="kpi models"><p class="label">Verbrauch nach Modell</p>
+    <div class="stack" role="img" aria-label="Opus 5.5 71 Prozent, Sonnet 5.5 21 Prozent, Haiku 5.5 8 Prozent"><span style="--c: var(--m1); flex: 71"></span><span style="--c: var(--m2); flex: 21"></span><span style="--c: var(--m3); flex: 8"></span></div>
+    <ul class="legend"><li style="--c: var(--m1)"><b>Opus 5.5</b> 71 % für Runden</li><li style="--c: var(--m2)"><b>Sonnet 5.5</b> 21 % fürs Messen</li><li style="--c: var(--m3)"><b>Haiku 5.5</b> 8 % für den Scan</li></ul>
+  </div>
+</section>
+
 <div class="shell">
-  <nav class="rounds" aria-label="Runden" id="rounds"></nav>
+  <nav class="timeline" aria-label="Runden" id="rounds"></nav>
   <main class="main" id="main"></main>
 </div>
 
 <script>
-// Example data of a run; the real dashboard reads .evolve/rounds/*/summary.json and the transcripts
+// example data of a run; the real dashboard reads .evolve/rounds/*/summary.json and the transcripts
 var ROUNDS = [
-  { no: 0, block: 0, status: 'base', title: 'Ausgangslage', why: 'Runde 0: Scan, Messwerte und Screenshots, an denen alles Spätere gemessen wird. Bekannt: 2 Konsolenfehler auf /dfb.', compass: [], features: '', checks: [['Build', '✓', 'ok'], ['Tests', '332', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [], tokens: '0,21 Mio.', model: 'Haiku 5.5 (Scan)', time: '6 min', marks: [] },
-  { no: 1, block: 1, status: 'ok', title: 'Spannung je offenem Spiel', why: 'Die UI kennt Tabellenplatz und Form beider Teams, zeigt sie vor dem Anstoß aber nirgends zusammen. Ein Balken sagt auf einen Blick, welches Spiel sich lohnt.', compass: ['Daten zuerst', 'keine Quoten'], features: 'tension', checks: [['Build', '✓', 'ok'], ['Tests', '334', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '398 px', 'warn', '+11']], files: [['templates/matchday.html', 14, 2], ['TensionCalculator.java', 61, 0], ['app.css', 9, 0]], tokens: '0,44 Mio.', model: 'Opus 5.5', time: '14 min', marks: [['.feature.tension', 'neu: Spannung']] },
-  { no: 2, block: 1, status: 'ok', title: '„Es geht um“ je Spiel', why: 'Aus der Tabelle folgt, worum es geht: Platz 1, Relegation, Abstand nach unten. Eine Zeile unter jedem offenen Spiel.', compass: ['Daten zuerst'], features: 'tension stakes', checks: [['Build', '✓', 'ok'], ['Tests', '339', 'ok'], ['Lighthouse', '93', 'ok', '−1'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '398 px', 'ok']], files: [['templates/matchday.html', 6, 0], ['StakesCalculator.java', 88, 0]], tokens: '0,39 Mio.', model: 'Opus 5.5', time: '12 min', marks: [['.feature.stakes', 'neu: Es geht um']] },
-  { no: 3, block: 1, status: 'reverted', title: 'Live-Ticker als Laufband', why: 'Zurückgedreht nach 3 Versuchen: Das Laufband verschob beim Nachladen alle Spiele (CLS 0,18 statt höchstens 0,06).', compass: [], features: 'tension stakes', checks: [['Build', '✓', 'ok'], ['Tests', '339', 'ok'], ['CLS', '0,18', 'fail', '+0,17']], files: [], tokens: '0,52 Mio.', model: 'Opus 5.5', time: '19 min', marks: [] },
-  { no: 4, block: 1, status: 'ok', title: 'Konferenz nachspielen', why: 'Alle Tore des Spieltags in Uhrzeit-Reihenfolge abspielen, wie eine Radio-Konferenz.', compass: ['Daten zuerst', 'KI ein Klick entfernt'], features: 'replay tension stakes', checks: [['Build', '✓', 'ok'], ['Tests', '342', 'ok'], ['Lighthouse', '93', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '431 px', 'warn', '+44']], files: [['nav.js', 120, 4], ['ConferenceReplay.java', 74, 0], ['app.css', 40, 0]], tokens: '0,61 Mio.', model: 'Opus 5.5', time: '22 min', marks: [['.act-replay', 'neuer Button']] },
-  { no: 5, block: 1, status: 'ok', tidy: true, title: 'Aufräumen: Aktionen als Band', why: 'Aufräumrunde des Blocks: Der Hauptinhalt war mobil um 44 px nach unten gerutscht. Die Aktionen sind jetzt ein wischbares Band.', compass: ['Spiele zuerst'], features: 'replay tension stakes band', checks: [['Build', '✓', 'ok'], ['Tests', '342', 'ok'], ['Lighthouse', '95', 'ok', '+1'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok', '−44']], files: [['app.css', 18, 6], ['templates/matchday.html', 3, 3]], tokens: '0,28 Mio.', model: 'Opus 5.5', time: '9 min', marks: [['.app-actions', 'jetzt ein Band']] },
-  { no: 6, block: 2, status: 'ok', title: 'Wetter am Spielort', why: 'Das Backend holt das Wetter schon für die Spielseite; auf der Spieltagsseite fehlte es.', compass: ['Daten zuerst'], features: 'replay tension stakes band weather', checks: [['Build', '✓', 'ok'], ['Tests', '345', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,02', 'ok', '+0,01'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [['templates/matchday.html', 4, 0], ['WeatherService.java', 12, 2]], tokens: '0,33 Mio.', model: 'Opus 5.5', time: '11 min', marks: [['.feature.weather', 'neu: Wetter']] },
-  { no: 7, block: 2, status: 'ok', title: 'Tabelle „wenn es so bleibt“', why: 'Bei laufenden Spielen rechnet die Tabelle mit dem aktuellen Stand; Pfeile zeigen, wer gerade steigt.', compass: ['Daten zuerst', 'vorläufig markiert'], features: 'replay tension stakes band', checks: [['Build', '✓', 'ok'], ['Tests', '351', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [['LiveTable.java', 96, 0], ['templates/liveTable.html', 31, 0]], tokens: '0,47 Mio.', model: 'Opus 5.5', time: '16 min', marks: [] },
-  { no: 8, block: 2, status: 'running', title: 'Runde 8 läuft …', why: 'Der Runden-Agent baut gerade. Das Dashboard zeigt den Stand, sobald die Runde ausgeliefert ist.', compass: [], features: 'replay tension stakes band', checks: [], files: [], tokens: '0,18 Mio. bisher', model: 'Opus 5.5', time: 'seit 6 min', marks: [] }
+  { no: 0, block: 0, status: 'base', title: 'Ausgangslage', why: 'Scan, Messwerte und Screenshots, an denen alles Spätere gemessen wird. Bekannt: 2 Konsolenfehler auf /dfb.', compass: [], features: '', lh: 94, checks: [['Build', '✓', 'ok'], ['Tests', '332', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [], tokens: '0,21 Mio.', model: 'Haiku 5.5 (Scan)', time: '6 min', marks: [] },
+  { no: 1, block: 1, status: 'ok', title: 'Spannung je offenem Spiel', why: 'Die UI kennt Tabellenplatz und Form beider Teams, zeigt sie vor dem Anstoß aber nirgends zusammen. Ein Balken sagt auf einen Blick, welches Spiel sich lohnt.', compass: ['Daten zuerst', 'keine Quoten'], features: 'tension', lh: 94, checks: [['Build', '✓', 'ok'], ['Tests', '334', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '398 px', 'warn', '+11']], files: [['templates/matchday.html', 14, 2], ['TensionCalculator.java', 61, 0], ['app.css', 9, 0]], tokens: '0,44 Mio.', model: 'Opus 5.5', time: '14 min', marks: [['.feature.tension', 'neu: Spannung']] },
+  { no: 2, block: 1, status: 'ok', title: '„Es geht um“ je Spiel', why: 'Aus der Tabelle folgt, worum es geht: Platz 1, Relegation, Abstand nach unten. Eine Zeile unter jedem offenen Spiel.', compass: ['Daten zuerst'], features: 'tension stakes', lh: 93, checks: [['Build', '✓', 'ok'], ['Tests', '339', 'ok'], ['Lighthouse', '93', 'ok', '−1'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '398 px', 'ok']], files: [['templates/matchday.html', 6, 0], ['StakesCalculator.java', 88, 0]], tokens: '0,39 Mio.', model: 'Opus 5.5', time: '12 min', marks: [['.feature.stakes', 'neu: Es geht um']] },
+  { no: 3, block: 1, status: 'reverted', title: 'Live-Ticker als Laufband', why: 'Zurückgedreht nach 3 Versuchen: Das Laufband verschob beim Nachladen alle Spiele (CLS 0,18 statt höchstens 0,06).', compass: [], features: 'tension stakes', lh: null, checks: [['Build', '✓', 'ok'], ['Tests', '339', 'ok'], ['CLS', '0,18', 'fail', '+0,17']], files: [], tokens: '0,52 Mio.', model: 'Opus 5.5', time: '19 min', marks: [] },
+  { no: 4, block: 1, status: 'ok', title: 'Konferenz nachspielen', why: 'Alle Tore des Spieltags in Uhrzeit-Reihenfolge abspielen, wie eine Radio-Konferenz.', compass: ['Daten zuerst', 'KI ein Klick entfernt'], features: 'replay tension stakes', lh: 93, checks: [['Build', '✓', 'ok'], ['Tests', '342', 'ok'], ['Lighthouse', '93', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '431 px', 'warn', '+44']], files: [['nav.js', 120, 4], ['ConferenceReplay.java', 74, 0], ['app.css', 40, 0]], tokens: '0,61 Mio.', model: 'Opus 5.5', time: '22 min', marks: [['.act-replay', 'neuer Button']] },
+  { no: 5, block: 1, status: 'ok', tidy: true, title: 'Aufräumen: Aktionen als Band', why: 'Aufräumrunde des Blocks: Der Hauptinhalt war mobil um 44 px nach unten gerutscht. Die Aktionen sind jetzt ein wischbares Band.', compass: ['Spiele zuerst'], features: 'replay tension stakes band', lh: 95, checks: [['Build', '✓', 'ok'], ['Tests', '342', 'ok'], ['Lighthouse', '95', 'ok', '+1'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok', '−44']], files: [['app.css', 18, 6], ['templates/matchday.html', 3, 3]], tokens: '0,28 Mio.', model: 'Opus 5.5', time: '9 min', marks: [['.app-actions', 'jetzt ein Band']] },
+  { no: 6, block: 2, status: 'ok', title: 'Wetter am Spielort', why: 'Das Backend holt das Wetter schon für die Spielseite; auf der Spieltagsseite fehlte es.', compass: ['Daten zuerst'], features: 'replay tension stakes band weather', lh: 94, checks: [['Build', '✓', 'ok'], ['Tests', '345', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,02', 'ok', '+0,01'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [['templates/matchday.html', 4, 0], ['WeatherService.java', 12, 2]], tokens: '0,33 Mio.', model: 'Opus 5.5', time: '11 min', marks: [['.feature.weather', 'neu: Wetter']] },
+  { no: 7, block: 2, status: 'ok', title: 'Tabelle „wenn es so bleibt“', why: 'Bei laufenden Spielen rechnet die Tabelle mit dem aktuellen Stand; Pfeile zeigen, wer gerade steigt. Die Änderung liegt auf /bl1/tabelle, nicht auf dieser Seite.', compass: ['Daten zuerst', 'vorläufig markiert'], features: 'replay tension stakes band weather', lh: 94, checks: [['Build', '✓', 'ok'], ['Tests', '351', 'ok'], ['Lighthouse', '94', 'ok'], ['CLS', '0,01', 'ok'], ['Hauptinhalt mobil', '387 px', 'ok']], files: [['LiveTable.java', 96, 0], ['templates/liveTable.html', 31, 0]], tokens: '0,47 Mio.', model: 'Opus 5.5', time: '16 min', marks: [] },
+  { no: 8, block: 2, status: 'running', title: 'Runde 8 läuft', why: 'Der Runden-Agent baut gerade. Das Dashboard zeigt den Stand, sobald die Runde ausgeliefert ist.', compass: [], features: 'replay tension stakes band weather', lh: null, checks: [], files: [], tokens: '0,18 Mio. bisher', model: 'Opus 5.5', time: 'seit 6 min', marks: [] }
 ];
-var BLOCKS = { 0: 'Ausgangslage', 1: 'Block 1', 2: 'Block 2', 3: 'Block 3' };
-var state = { round: 5, view: 'desktop', overlay: true };
+var BLOCKS = ['Ausgangslage', 'Block 1', 'Block 2', 'Block 3'];
+var ICON = { ok: '<path d="M5 12l5 5 9-10"/>', reverted: '<path d="M4 10h11a5 5 0 0 1 0 10H9"/><path d="M8 6l-4 4 4 4"/>', base: '<circle cx="12" cy="12" r="3" fill="currentColor"/>', running: '' };
+var state = { round: 5, tab: 'live', view: 'desktop', overlay: true };
+
+function el(html) { var t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+function text(node, sel, value) { node.querySelector(sel).textContent = value; }
+function pad(n) { return String(n).padStart(3, '0'); }
+function byNo(n) { return ROUNDS.filter(function (x) { return x.no === n; })[0]; }
 
 function renderNav() {
   var nav = document.getElementById('rounds');
   nav.textContent = '';
-  var last = -1;
-  ROUNDS.forEach(function (r) {
-    if (r.block !== last) {
-      var h = document.createElement('p'); h.className = 'block-title';
-      var done = ROUNDS.filter(function (x) { return x.block === r.block && x.status === 'ok'; }).length;
-      h.innerHTML = '<span></span><span></span>';
-      h.firstChild.textContent = BLOCKS[r.block];
-      h.lastChild.textContent = r.block ? done + ' ausgeliefert' : '';
-      nav.appendChild(h); last = r.block;
-    }
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'round'; b.dataset.round = r.no;
-    b.setAttribute('aria-current', String(r.no === state.round));
-    var sym = { ok: '✓', reverted: '↺', running: '', base: '0' }[r.status];
-    b.innerHTML = '<span class="no">r' + String(r.no).padStart(3, '0') + '</span><span><span class="t"></span><span class="tag"></span></span><span class="dot ' + r.status + '" aria-hidden="true">' + sym + '</span>';
-    b.querySelector('.t').textContent = r.title;
-    b.querySelector('.tag').textContent = r.tidy ? 'Aufräumrunde' : r.status === 'reverted' ? 'zurückgedreht' : r.status === 'running' ? 'läuft' : '';
-    b.setAttribute('aria-label', 'Runde ' + r.no + ': ' + r.title + (r.status === 'reverted' ? ', zurückgedreht' : ''));
-    nav.appendChild(b);
+  BLOCKS.forEach(function (name, b) {
+    var rs = ROUNDS.filter(function (r) { return r.block === b; });
+    var h = el('<h3><span></span><span class="num"></span></h3>');
+    h.firstChild.textContent = name;
+    if (b) h.lastChild.textContent = rs.length ? rs.filter(function (r) { return r.status === 'ok'; }).length + ' ausgeliefert' : 'noch offen';
+    nav.appendChild(h);
+    var group = el('<div class="block"></div>');
+    rs.forEach(function (r) {
+      var btn = el('<button type="button" class="round"><span class="dot ' + r.status + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[r.status] + '</svg></span><span><span class="t"></span><span class="sub"></span></span><span class="no num"></span></button>');
+      btn.dataset.round = r.no;
+      btn.setAttribute('aria-current', String(r.no === state.round));
+      btn.setAttribute('aria-label', 'Runde ' + r.no + ': ' + r.title + (r.status === 'reverted' ? ', zurückgedreht' : ''));
+      text(btn, '.t', r.title);
+      text(btn, '.sub', r.tidy ? 'Aufräumrunde' : r.status === 'reverted' ? 'zurückgedreht' : r.status === 'running' ? 'läuft' : r.time);
+      text(btn, '.no', 'r' + pad(r.no));
+      group.appendChild(btn);
+    });
+    nav.appendChild(group);
   });
 }
 
 function renderMain() {
-  var r = ROUNDS.filter(function (x) { return x.no === state.round; })[0];
-  var shown = r.status === 'reverted' || r.status === 'running' ? ROUNDS.filter(function (x) { return x.no === r.no - 1; })[0] : r;
+  var r = byNo(state.round);
+  // a reverted or running round has no state of its own; show the one before
+  var shown = r.status === 'reverted' || r.status === 'running' ? byNo(r.no - 1) : r;
+  var prev = byNo(Math.max(0, shown.no - 1));
   var m = document.getElementById('main');
   m.innerHTML =
-    '<div class="round-head"><h1></h1><span class="meta"></span></div>' +
-    '<p class="why"></p>' +
-    (r.compass.length ? '<p class="compass" aria-label="Kompass-Regeln, denen die Idee dient"></p>' : '') +
-    (r.status === 'reverted' ? '<p class="reverted-note">Diese Runde wurde zurückgedreht. Unten der Stand davor (Runde ' + (r.no - 1) + ').</p>' : '') +
+    '<section class="head"><div class="meta"></div><h1></h1><p class="why"></p></section>' +
+    (r.status === 'reverted' ? '<div class="alert" data-variant="destructive"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10h11a5 5 0 0 1 0 10H9"/><path d="M8 6l-4 4 4 4"/></svg><h2>Zurückgedreht</h2><section>Die Vorschau zeigt den Stand davor, Runde ' + (r.no - 1) + '.</section></div>' : '') +
     (r.checks.length ? '<div class="checks" aria-label="Leitplanken"></div>' : '') +
-    '<div class="toolbar"><span class="seg" role="group" aria-label="Ansicht"><button type="button" data-view="desktop">Desktop</button><button type="button" data-view="mobile">390 px</button></span>' +
-    '<label class="overlay-toggle"><button type="button" class="switch" role="switch" data-overlay aria-label="Änderungen zeigen"></button>Änderungen zeigen</label></div>' +
-    '<div class="frame"><div class="frame-bar"><span class="url"></span><span class="port"></span></div><div class="stage"></div></div>' +
-    '<div class="lower"><section class="panel"><h2>Geänderte Dateien</h2><ul class="files"></ul></section>' +
-    '<section class="panel cost"><h2>Diese Runde</h2><dl></dl></section></div>';
-  m.querySelector('h1').textContent = r.title;
-  m.querySelector('.meta').textContent = 'Runde ' + r.no + (r.block ? ' · Block ' + r.block : '') + (r.tidy ? ' · Aufräumrunde' : '');
-  m.querySelector('.why').textContent = r.why;
-  if (r.compass.length) r.compass.forEach(function (c) { var s = document.createElement('span'); s.textContent = c; m.querySelector('.compass').appendChild(s); });
+    '<section class="card viewer"><header>' +
+      '<div class="tabs"><nav role="tablist" aria-orientation="horizontal"><button type="button" role="tab" data-tab="live">Vorschau</button><button type="button" role="tab" data-tab="compare">Vorher / nachher</button><button type="button" role="tab" data-tab="files">Dateien</button></nav></div>' +
+      '<div class="view-tools"><div class="button-group" role="group" aria-label="Breite"><button type="button" class="btn" data-variant="outline" data-size="sm" data-view="desktop">Desktop</button><button type="button" class="btn" data-variant="outline" data-size="sm" data-view="mobile">390 px</button></div>' +
+      '<label><input type="checkbox" role="switch" class="input" data-overlay>Änderungen zeigen</label></div>' +
+    '</header><section class="panel"></section></section>' +
+    '<div class="lower"><section class="card"><header><h2>Diese Runde</h2></header><section><dl class="facts num"></dl></section></section>' +
+    '<section class="card trend"><header><h2>Lighthouse je Runde</h2><p>Gestrichelt: Grenze 89 (Runde 0 minus 5)</p></header><section></section></section></div>';
+
+  var meta = m.querySelector('.meta');
+  meta.appendChild(el('<span class="badge" data-variant="secondary"></span>')).textContent = 'Runde ' + r.no + (r.block ? ' · Block ' + r.block : '');
+  if (r.tidy) meta.appendChild(el('<span class="badge" data-variant="outline">Aufräumrunde</span>'));
+  r.compass.forEach(function (c) { meta.appendChild(el('<span class="badge" data-variant="outline"></span>')).textContent = '✓ ' + c; });
+  text(m, 'h1', r.title);
+  text(m, '.why', r.why);
   r.checks.forEach(function (c) {
-    var s = document.createElement('span'); s.className = 'check ' + c[2];
-    s.innerHTML = '<span></span><b></b>' + (c[3] ? '<small></small>' : '');
-    s.firstChild.textContent = c[0]; s.querySelector('b').textContent = c[1]; if (c[3]) s.querySelector('small').textContent = c[3] + ' zu Runde 0';
+    var s = el('<span class="check ' + c[2] + '"><span></span><b class="num"></b></span>');
+    s.firstChild.textContent = c[0]; s.querySelector('b').textContent = c[1];
+    if (c[3]) s.appendChild(el('<small class="num"></small>')).textContent = c[3] + ' zu Runde 0';
     m.querySelector('.checks').appendChild(s);
   });
+
+  m.querySelectorAll('[role=tab]').forEach(function (t) { t.setAttribute('aria-selected', String(t.dataset.tab === state.tab)); });
   m.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === state.view)); });
-  m.querySelector('[data-overlay]').setAttribute('aria-checked', String(state.overlay));
-  m.querySelector('.url').textContent = 'localhost:41' + String(shown.no).padStart(3, '0') + '/bl1 · Tag evolve-herbst-r' + String(shown.no).padStart(3, '0');
-  m.querySelector('.port').textContent = r.status === 'running' ? 'Stand Runde ' + shown.no : 'läuft aus Worktree';
-  var stage = m.querySelector('.stage');
-  stage.classList.toggle('mobile', state.view === 'mobile');
-  stage.classList.toggle('show-overlay', state.overlay && r.status === 'ok');
-  stage.innerHTML = appHtml(shown.features);
-  var marks = stage.querySelector('.marks');
-  // the real overlay comes from the pixel diff against the previous tag; here the mock marks the changed elements
-  var app = stage.querySelector('.app'), box = app.getBoundingClientRect();
-  r.marks.forEach(function (k) {
-    app.querySelectorAll(k[0]).forEach(function (el, i) {
-      var b = el.getBoundingClientRect(); if (!b.width) return;
-      var d = document.createElement('div'); d.className = 'mark';
-      d.style.cssText = 'left:' + (b.left - box.left - 3) + 'px;top:' + (b.top - box.top - 3) + 'px;width:' + (b.width + 6) + 'px;height:' + (b.height + 6) + 'px';
-      if (!i) { d.innerHTML = '<span></span>'; d.firstChild.textContent = k[1]; }
-      marks.appendChild(d);
+  var sw = m.querySelector('[data-overlay]');
+  sw.checked = state.overlay; sw.disabled = !r.marks.length;
+
+  var panel = m.querySelector('.panel');
+  if (state.tab === 'live') {
+    panel.innerHTML = '<div class="browser"><div class="browser-bar"><i></i><i></i><i></i><span class="url"></span><span class="tag"></span></div><div class="stage"></div></div>';
+    text(panel, '.url', 'localhost:41' + pad(shown.no) + '/bl1');
+    text(panel, '.tag', 'Tag evolve-herbst-r' + pad(shown.no));
+    var stage = panel.querySelector('.stage');
+    stage.classList.toggle('mobile', state.view === 'mobile');
+    stage.classList.toggle('show-overlay', state.overlay && r.status === 'ok');
+    stage.innerHTML = appHtml(shown.features);
+    drawMarks(stage.querySelector('.app'), r.marks);
+  } else if (state.tab === 'compare') {
+    panel.innerHTML = '<div class="compare"><figure><figcaption></figcaption><div class="stage"></div></figure><figure><figcaption></figcaption><div class="stage"></div></figure></div>';
+    var caps = panel.querySelectorAll('figcaption'), stages = panel.querySelectorAll('.stage');
+    caps[0].textContent = 'Vorher: Runde ' + prev.no; caps[1].textContent = 'Nachher: Runde ' + shown.no;
+    stages[0].innerHTML = appHtml(prev.features); stages[1].innerHTML = appHtml(shown.features);
+    stages.forEach(function (s) { s.classList.toggle('mobile', state.view === 'mobile'); });
+    stages[1].classList.toggle('show-overlay', state.overlay && r.status === 'ok');
+    drawMarks(stages[1].querySelector('.app'), r.marks);
+  } else {
+    panel.innerHTML = '<div class="table-container"><table class="table diff"><thead><tr><th>Datei</th><th class="num">hinzu</th><th class="num">weg</th></tr></thead><tbody></tbody></table></div>';
+    var tb = panel.querySelector('tbody');
+    if (!r.files.length) tb.appendChild(el('<tr><td colspan="3" class="muted"></td></tr>')).firstChild.textContent = r.status === 'reverted' ? 'Keine, die Runde wurde zurückgedreht.' : 'Noch keine.';
+    r.files.forEach(function (f) {
+      var tr = el('<tr><td></td><td class="num plus"></td><td class="num minus"></td></tr>');
+      tr.children[0].textContent = f[0]; tr.children[1].textContent = '+' + f[1]; tr.children[2].textContent = '−' + f[2];
+      tb.appendChild(tr);
     });
+  }
+
+  var dl = m.querySelector('.facts');
+  [['Tokens', r.tokens], ['Modell', r.model], ['Dauer', r.time], ['Tag', r.status === 'ok' ? 'evolve-herbst-r' + pad(r.no) : '–']].forEach(function (p) {
+    dl.appendChild(el('<dt></dt>')).textContent = p[0]; dl.appendChild(el('<dd></dd>')).textContent = p[1];
   });
-  var files = m.querySelector('.files');
-  if (!r.files.length) { var li = document.createElement('li'); li.textContent = r.status === 'reverted' ? 'keine – zurückgedreht' : '–'; files.appendChild(li); }
-  r.files.forEach(function (f) { var li = document.createElement('li'); li.innerHTML = '<span></span><span><span class="plus">+' + f[1] + '</span> <span class="minus">−' + f[2] + '</span></span>'; li.firstChild.textContent = f[0]; files.appendChild(li); });
-  var dl = m.querySelector('dl');
-  [['Tokens', r.tokens], ['Modell', r.model], ['Dauer', r.time]].forEach(function (p) { var dt = document.createElement('dt'); dt.textContent = p[0]; var dd = document.createElement('dd'); dd.textContent = p[1]; dl.appendChild(dt); dl.appendChild(dd); });
+  m.querySelector('.trend > section').innerHTML = trendSvg(r.no);
 }
 
-// a sketch of the app under test, drawn from the round's features
-function appHtml(features) {
-  function match(t, h, s, a) {
-    return '<div class="match"><span>' + t + '</span><span class="home">' + h + '</span><span class="score">' + s + '</span><span class="away">' + a + '</span>' +
-      '<span class="feature tension tension"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i>&nbsp;Spannung</span>' +
+// the real overlay comes from a pixel diff against the previous tag; the mock marks the changed elements
+function drawMarks(app, marks) {
+  var layer = app.querySelector('.marks'), box = app.getBoundingClientRect();
+  marks.forEach(function (k) {
+    app.querySelectorAll(k[0]).forEach(function (node, i) {
+      var b = node.getBoundingClientRect(); if (!b.width) return;
+      var d = el('<div class="mark"></div>');
+      d.style.cssText = 'left:' + (b.left - box.left - 3) + 'px;top:' + (b.top - box.top - 3) + 'px;width:' + (b.width + 6) + 'px;height:' + (b.height + 6) + 'px';
+      if (!i) d.appendChild(el('<span></span>')).textContent = k[1];
+      layer.appendChild(d);
+    });
+  });
+}
+
+function trendSvg(selected) {
+  var W = 320, H = 110, x0 = 26, y = function (v) { return 10 + (100 - v) * 8; };
+  var pts = ROUNDS.filter(function (r) { return r.status !== 'running'; });
+  var step = (W - x0 - 8) / (pts.length - 1);
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Lighthouse-Wert je Runde, alle über der Grenze">';
+  [100, 95, 90].forEach(function (v) { s += '<line class="grid" x1="' + x0 + '" x2="' + W + '" y1="' + y(v) + '" y2="' + y(v) + '"/><text x="0" y="' + (y(v) + 4) + '">' + v + '</text>'; });
+  s += '<line class="limit" x1="' + x0 + '" x2="' + W + '" y1="' + y(89) + '" y2="' + y(89) + '"/>';
+  var line = pts.filter(function (r) { return r.lh; }).map(function (r) { return (x0 + pts.indexOf(r) * step) + ',' + y(r.lh); });
+  s += '<polyline class="line" points="' + line.join(' ') + '"/>';
+  pts.forEach(function (r, i) {
+    // a reverted round sits as an empty ring on the line, it kept the previous value
+    var cx = x0 + i * step, cy = y(r.lh || pts[i - 1].lh);
+    s += '<circle class="' + (r.lh ? '' : 'gone ') + (r.no === selected ? 'sel' : '') + '" cx="' + cx + '" cy="' + cy + '" r="4"><title>Runde ' + r.no + ': ' + (r.lh || 'zurückgedreht, nicht gemessen') + '</title></circle>';
+    s += '<text x="' + (cx - 6) + '" y="' + (H - 2) + '">r' + r.no + '</text>';
+  });
+  return s + '</svg>';
+}
+
+function appHtml(f) {
+  function match(t, h, a) {
+    return '<div class="match"><span>' + t + '</span><span class="home">' + h + '</span><span class="score">–:–</span><span>' + a + '</span>' +
+      '<span class="feature tension"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i>&nbsp;Spannung</span>' +
       '<span class="feature stakes">Es geht um: Platz 1</span><span class="feature weather">☁ 9 °C, trocken</span></div>';
   }
-  return '<div class="app" data-features="' + features + '"><div class="app-nav"><span>Rasen-Radar</span><span>Mein Verein</span></div>' +
-    '<div class="app-body"><h2>9. Spieltag</h2><div class="app-actions"><span>KI-Vorschau</span><span>Torschützen</span><span>Saison in Zahlen</span><span>Drucken</span><span>Sofa-Modus</span>' + (/replay/.test(features) ? '<span class="act-replay">Konferenz nachspielen</span>' : '') + '</div>' +
-    match('Fr 20:30', 'Hamburg', '–:–', 'Dortmund') + match('Sa 15:30', 'Bayern', '–:–', 'Leipzig') + match('Sa 18:30', 'Bremen', '–:–', 'Freiburg') +
+  return '<div class="app" data-features="' + f + '"><div class="app-nav"><span>Rasen-Radar</span><span>Mein Verein</span></div>' +
+    '<div class="app-body"><h2>9. Spieltag</h2><div class="app-actions"><span>KI-Vorschau</span><span>Torschützen</span><span>Saison in Zahlen</span><span>Drucken</span><span>Sofa-Modus</span>' +
+    (/replay/.test(f) ? '<span class="act-replay">Konferenz nachspielen</span>' : '') + '</div>' +
+    match('Fr 20:30', 'Hamburg', 'Dortmund') + match('Sa 15:30', 'Bayern', 'Leipzig') + match('Sa 18:30', 'Bremen', 'Freiburg') +
     '</div><div class="marks"></div></div>';
 }
 
 document.addEventListener('click', function (e) {
-  var r = e.target.closest('[data-round]'); if (r) { state.round = +r.dataset.round; renderNav(); renderMain(); return; }
-  var v = e.target.closest('[data-view]'); if (v) { state.view = v.dataset.view; renderMain(); return; }
-  if (e.target.closest('[data-overlay]') || e.target.closest('.overlay-toggle')) { e.preventDefault(); state.overlay = !state.overlay; renderMain(); return; }
-  if (e.target.closest('[data-theme-toggle]')) {
-    var dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.dataset.theme = dark ? 'light' : 'dark';
-  }
+  var t;
+  if ((t = e.target.closest('[data-round]'))) { state.round = +t.dataset.round; renderNav(); renderMain(); }
+  else if ((t = e.target.closest('[data-tab]'))) { state.tab = t.dataset.tab; renderMain(); }
+  else if ((t = e.target.closest('[data-view]'))) { state.view = t.dataset.view; renderMain(); }
+  else if (e.target.closest('[data-theme-toggle]')) { document.documentElement.classList.toggle('dark'); }
 });
+document.addEventListener('change', function (e) { if (e.target.matches('[data-overlay]')) { state.overlay = e.target.checked; renderMain(); } });
 renderNav();
 renderMain();
 </script>
