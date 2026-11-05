@@ -41,29 +41,51 @@ function listJsonl(dir) {
   } catch { return []; }
 }
 
-export function findTranscripts(marker, root = defaultRoot()) {
+export function findTranscripts(marker, root = defaultRoot(), { since, known = [] } = {}) {
   if (!marker) return [];
   const found = new Set();
-  let projects;
-  try { projects = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()); } catch { return []; }
+  const sessionDirs = new Map(); // dir -> Set(sessionId)
   const addSession = (dir, id) => {
-    found.add(path.join(dir, `${id}.jsonl`));
-    for (const f of listJsonl(path.join(dir, id, 'subagents'))) found.add(f);
+    if (!sessionDirs.has(dir)) sessionDirs.set(dir, new Set());
+    sessionDirs.get(dir).add(id);
   };
+  const sessionOf = (file) => {
+    // <dir>/<id>.jsonl or <dir>/<id>/subagents/<x>.jsonl
+    const parent = path.dirname(file);
+    if (path.basename(parent) === 'subagents') return [path.dirname(path.dirname(parent)), path.basename(path.dirname(parent))];
+    return [parent, path.basename(file, '.jsonl')];
+  };
+  const fresh = (f) => {
+    if (!since) return true;
+    try { return fs.statSync(f).mtime >= since; } catch { return false; }
+  };
+  const knownSet = new Set(known.filter((f) => fs.existsSync(f)));
+  for (const f of knownSet) addSession(...sessionOf(f));
+
+  let projects = [];
+  try { projects = fs.readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory()); } catch { /* no root */ }
   for (const p of projects) {
     const dir = path.join(root, p.name);
-    const sessions = new Set();
     for (const f of listJsonl(dir)) {
-      if (fileContains(f, marker)) sessions.add(path.basename(f, '.jsonl'));
+      if (knownSet.has(f) || !fresh(f)) continue;
+      if (fileContains(f, marker)) addSession(dir, path.basename(f, '.jsonl'));
     }
     let subdirs = [];
     try { subdirs = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()); } catch { /* none */ }
     for (const s of subdirs) {
-      if (sessions.has(s.name)) continue;
-      if (listJsonl(path.join(dir, s.name, 'subagents')).some((f) => fileContains(f, marker))) sessions.add(s.name);
+      if (sessionDirs.get(dir)?.has(s.name)) continue;
+      const hit = listJsonl(path.join(dir, s.name, 'subagents'))
+        .some((f) => !knownSet.has(f) && fresh(f) && fileContains(f, marker));
+      if (hit) addSession(dir, s.name);
     }
-    for (const id of sessions) addSession(dir, id);
   }
+  for (const [dir, ids] of sessionDirs) {
+    for (const id of ids) {
+      found.add(path.join(dir, `${id}.jsonl`));
+      for (const f of listJsonl(path.join(dir, id, 'subagents'))) found.add(f);
+    }
+  }
+  for (const f of knownSet) found.add(f);
   return [...found].filter((f) => fs.existsSync(f)).sort();
 }
 

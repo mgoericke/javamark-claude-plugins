@@ -78,7 +78,7 @@ function main() {
   const marker = `evolve-run:${run}:${crypto.randomBytes(4).toString('hex')}`;
   const stack = detectStack(repo);
   const clean = Object.fromEntries(Object.entries(stack).filter(([, v]) => v !== undefined));
-  const config = applyDefaults({ run, mode, app: clean, marker });
+  const config = applyDefaults({ run, mode, app: clean, marker, createdAt: new Date().toISOString() });
   execFileSync('git', ['checkout', '-b', config.branch], { cwd: repo, stdio: 'pipe' });
   writeConfig(repo, config);
   ensureGitignore(repo);

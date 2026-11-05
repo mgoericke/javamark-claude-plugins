@@ -19,9 +19,10 @@ test('skips broken lines', () => {
   const dir = tmp();
   const f = path.join(dir, 's.jsonl');
   const last = line('m2', 'a', '2026-01-01T00:00:02Z');
-  fs.writeFileSync(f, [line('m1', 'a', '2026-01-01T00:00:01Z'), 'not json {', last.slice(0, 40)].join('\n'));
+  assert.ok(last.indexOf('"usage"') > 0);
+  fs.writeFileSync(f, [line('m1', 'a', '2026-01-01T00:00:01Z'), 'not json {', last.slice(0, last.indexOf('"usage"') + 12), line('m3', 'a', '2026-01-01T00:00:03Z')].join('\n'));
   const entries = readUsage([f]);
-  assert.equal(entries.length, 1);
+  assert.equal(entries.length, 2);
   assert.deepEqual(
     { model: entries[0].model, input: entries[0].input, output: entries[0].output, cacheWrite: entries[0].cacheWrite, cacheRead: entries[0].cacheRead },
     { model: 'a', input: 1, output: 2, cacheWrite: 3, cacheRead: 4 },
@@ -113,4 +114,23 @@ test('computeUsage writes usage.json per round and stores transcripts', async ()
   assert.equal(r.rounds[2].total.input, 1);
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.evolve', 'usage.json'), 'utf8')).cost, r.cost);
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.evolve', 'evolve.json'), 'utf8')).transcripts.length, 1);
+});
+
+test('findTranscripts skips files older than since', () => {
+  const root = tmp();
+  const old = path.join(root, 'p', 'old.jsonl');
+  const fresh = path.join(root, 'p', 'new.jsonl');
+  write(old, ['evolve-run:x:1']);
+  write(fresh, ['evolve-run:x:1']);
+  const t = new Date('2026-01-01T00:00:00Z');
+  fs.utimesSync(old, new Date('2025-12-01T00:00:00Z'), new Date('2025-12-01T00:00:00Z'));
+  assert.deepEqual(findTranscripts('evolve-run:x:1', root, { since: t }), [fresh]);
+});
+
+test('known paths are included without scanning', () => {
+  const root = tmp();
+  const k = path.join(root, 'p', 'k.jsonl');
+  write(k, ['no marker here']);
+  const missing = path.join(root, 'p', 'gone.jsonl');
+  assert.deepEqual(findTranscripts('evolve-run:x:1', root, { known: [k, missing] }), [k]);
 });

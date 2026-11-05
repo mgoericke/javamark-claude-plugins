@@ -30,10 +30,17 @@ function roundWindows(repo, now) {
   return out;
 }
 
+// Earliest moment the run could have produced transcripts: createdAt, else the first round start, else no cutoff.
+function sinceOf(repo, config) {
+  if (config.createdAt) return new Date(config.createdAt);
+  const starts = Object.values(roundWindows(repo, new Date())).map((w) => w.from).filter((d) => !Number.isNaN(d.getTime()));
+  return starts.length ? new Date(Math.min(...starts)) : undefined;
+}
+
 export function computeUsage(repo, { root, now = new Date() } = {}) {
   const config = readConfig(repo);
-  const files = findTranscripts(config.marker, root);
-  writeConfig(repo, { ...JSON.parse(fs.readFileSync(path.join(evolveDir(repo), 'evolve.json'), 'utf8')), transcripts: files });
+  const files = findTranscripts(config.marker, root, { since: sinceOf(repo, config), known: config.transcripts });
+  writeConfig(repo, { ...config, transcripts: files });
   const entries = readUsage(files);
   const pack = (sum) => ({
     total: sum.total, byModel: sum.byModel, cost: estimateCost(sum, config.prices),
@@ -48,6 +55,10 @@ export function computeUsage(repo, { root, now = new Date() } = {}) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const repo = path.resolve(process.argv[2] ?? '.');
+  if (!fs.existsSync(path.join(evolveDir(repo), 'evolve.json'))) {
+    console.error('no evolve run here — run /evolve start');
+    process.exit(2);
+  }
   const r = computeUsage(repo);
-  console.log(`usage: ${r.total.input + r.total.output + r.total.cacheWrite + r.total.cacheRead} tokens, ~${r.cost.toFixed(2)} EUR, ${Object.keys(r.rounds).length} rounds`);
+  console.log(`usage: ${r.total.input + r.total.output + r.total.cacheWrite + r.total.cacheRead} tokens, ≈ ${r.cost.toFixed(2)} € (Schätzung), ${Object.keys(r.rounds).length} rounds`);
 }

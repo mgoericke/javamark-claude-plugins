@@ -39,6 +39,10 @@ export function applyDefaults(raw) {
   requireString(app.url, 'app.url');
   requireInt(app.readyTimeoutMs, 'app.readyTimeoutMs', 1);
 
+  if (raw.createdAt !== undefined && (typeof raw.createdAt !== 'string' || Number.isNaN(new Date(raw.createdAt).getTime()))) {
+    fail('createdAt', 'must be an ISO time string');
+  }
+
   const roundsPerBlock = raw.roundsPerBlock ?? 5;
   const blocks = raw.blocks ?? 3;
   const maxAttempts = raw.maxAttempts ?? 3;
