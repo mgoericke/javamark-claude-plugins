@@ -2,7 +2,7 @@
 
 **From domain spec to reviewed, documented code: Claude Code plugins for Java and Quarkus developers.**
 
-Ten plugins that work on their own and fit together: 13 skills that activate when the task matches, 16 slash commands and 7 specialist agents.
+Ten plugins that work on their own and fit together: 13 skills that activate when the task matches, 17 slash commands and 7 specialist agents.
 
 ```bash
 /plugin marketplace add mgoericke/javamark-claude-plugins
@@ -56,7 +56,7 @@ Prefer to think it through together? `/coworker` turns Claude into a pair-progra
 
 | Plugin | What it does | Try |
 |--------|--------------|-----|
-| [wiki-llm](plugins/wiki-llm/) | Your second brain in plain Markdown: searchable, connectable, Git-versioned, no database | `/wiki-init`, `/wiki <question>` |
+| [wiki-llm](plugins/wiki-llm/) | A knowledge base in Obsidian that Claude writes and you read: sources become linked pages, no database | `/wiki-init`, `/wiki-ingest` |
 
 ### Experiment
 
