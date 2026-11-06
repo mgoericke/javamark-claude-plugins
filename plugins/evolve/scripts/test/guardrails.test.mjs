@@ -69,6 +69,15 @@ test('cls threshold', () => {
   assert.equal(find(at(0.07), 'cls').pass, false);
 });
 
+test('an unmeasured lighthouse metric is a soft miss, not a hard failure', () => {
+  const base = metrics({ lighthouse: { perf: 90, a11y: 90, cls: null } });
+  const r = evaluate({ baseline: base, current: metrics({ lighthouse: { perf: 90, a11y: 90, cls: NaN } }), config: cfg() });
+  assert.equal(r.hard.some((c) => c.name === 'cls'), false);
+  assert.equal(r.soft.find((c) => c.name === 'cls').value, 'missing');
+  assert.equal(r.hard.find((c) => c.name === 'lighthouse-perf').pass, true);
+  assert.equal(r.pass, true);
+});
+
 test('failing tests may not grow', () => {
   const at = (n) => evaluate({ baseline: metrics({ test: { ok: false, failing: 2 } }), current: metrics({ test: { ok: false, failing: n } }), config: cfg() });
   assert.equal(find(at(2), 'test').pass, true);

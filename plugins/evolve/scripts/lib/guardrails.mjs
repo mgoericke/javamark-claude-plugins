@@ -79,12 +79,19 @@ export function evaluate({ baseline, current, config }) {
   if (lb && !lc) soft.push({ name: 'lighthouse', pass: false, value: 'missing', detail: 'lighthouse missing this round' });
   if (lb && lc) {
     const t = config.thresholds;
-    const dPerf = round(lc.perf - lb.perf);
-    const dA11y = round(lc.a11y - lb.a11y);
-    const dCls = round(lc.cls - lb.cls);
-    hard.push({ name: 'lighthouse-perf', pass: dPerf >= t.lighthousePerf, value: lc.perf, baseline: lb.perf, delta: dPerf });
-    hard.push({ name: 'lighthouse-a11y', pass: dA11y >= t.lighthouseA11y, value: lc.a11y, baseline: lb.a11y, delta: dA11y });
-    hard.push({ name: 'cls', pass: dCls <= t.cls, value: lc.cls, baseline: lb.cls, delta: dCls });
+    const checks = [
+      ['lighthouse-perf', 'perf', (d) => d >= t.lighthousePerf],
+      ['lighthouse-a11y', 'a11y', (d) => d >= t.lighthouseA11y],
+      ['cls', 'cls', (d) => d <= t.cls],
+    ];
+    for (const [name, key, ok] of checks) {
+      if (!Number.isFinite(lb[key]) || !Number.isFinite(lc[key])) {
+        soft.push({ name, pass: false, value: 'missing', detail: `${key} not measured this round or in round 0` });
+        continue;
+      }
+      const delta = round(lc[key] - lb[key]);
+      hard.push({ name, pass: ok(delta), value: lc[key], baseline: lb[key], delta });
+    }
   }
   if (current.characterisation) {
     const { passed, failed } = current.characterisation;

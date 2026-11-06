@@ -40,11 +40,14 @@ async function runLighthouse(url) {
     const run = lh.default ?? lh.lighthouse;
     const res = await run(url, { port, output: 'json', logLevel: 'silent', onlyCategories: ['performance', 'accessibility'], formFactor: 'mobile' });
     const lhr = res.lhr;
+    // Lighthouse reports null scores and missing numeric values when an audit errors; keep them null, never NaN.
+    const score = (v) => (Number.isFinite(v) ? Math.round(v * 100) : null);
+    const cls = lhr.audits['cumulative-layout-shift']?.numericValue;
     return {
       metrics: {
-        perf: Math.round(lhr.categories.performance.score * 100),
-        a11y: Math.round(lhr.categories.accessibility.score * 100),
-        cls: Math.round(lhr.audits['cumulative-layout-shift'].numericValue * 10000) / 10000,
+        perf: score(lhr.categories.performance?.score),
+        a11y: score(lhr.categories.accessibility?.score),
+        cls: Number.isFinite(cls) ? Math.round(cls * 10000) / 10000 : null,
       },
     };
   } catch (e) {
