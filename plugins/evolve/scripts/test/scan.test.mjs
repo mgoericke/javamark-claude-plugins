@@ -86,6 +86,7 @@ test('scan CLI commits only its own files and leaves the tree clean', async (t) 
   assert.equal(g('log', '-1', '--format=%s').trim(), 'evolve: scan r003');
   const files = g('show', '--name-only', '--format=', 'HEAD').split('\n').filter(Boolean);
   assert.ok(files.length > 0 && files.every((f) => f.startsWith('.evolve/rounds/r003/')), files.join(','));
+  assert.ok(!files.some((f) => f.endsWith('.log')));
   assert.equal(g('status', '--porcelain').trim(), '?? stray.txt');
   fs.rmSync(repo, { recursive: true, force: true });
 });

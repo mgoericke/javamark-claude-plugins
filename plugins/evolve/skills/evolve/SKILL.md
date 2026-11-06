@@ -7,7 +7,7 @@ description: Develop an existing application further in rounds, each round one b
 
 evolve develops a git repository in **rounds** on a local branch `evolve/<run>`. Each round ships one idea, the app stays runnable,
 and every round is one commit plus the tag `evolve-<run>-rNNN`. Rounds are grouped into **blocks**; evolve stops after each block.
-All run data lives in the target repo under `.evolve/`. Scripts are called as `node "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs" <repo> ...`.
+All run data lives in the target repo under `.evolve/`. Scripts are called as `node "${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs" <repo> ...`. **`<repo>` is always the absolute path of the target repository, in every call and for every file path; the session may run outside the repo, so no step relies on the current directory.**
 
 ## Hard rules
 
@@ -26,7 +26,7 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 | `.evolve/rounds/rNNN/` | `start.txt`, `scan.json`, `metrics.json`, `guardrails.json`, `shots/`, `summary.json`, `diffs.json`, `diff/` |
 | `.evolve/characterisation/` | modernize: recorded behaviour |
 | `.evolve/usage.json` | token usage per round, written by `usage.mjs` |
-| `.evolve/local/` | never committed: `dashboard.log`, `logs/app-rNNN.log`, scratch summaries |
+| `.evolve/local/` | never committed: `dashboard.log`, `logs/app-rNNN.log` (dashboard apps), `logs/scan-rNNN.log` (scan), scratch summaries |
 | `.evolve/worktrees/` | never committed: one git worktree per round for the dashboard |
 
 `.evolve/local/` and `.evolve/worktrees/` are gitignored by `init.mjs`; they do not count as a dirty tree.
@@ -72,7 +72,7 @@ Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>
 6. `check.mjs <repo> --baseline`. It first installs dependencies if needed (slow on the first run), then builds, tests, starts the app, walks the routes, takes screenshots and metrics, records the known issues, and commits `evolve: baseline` (including `evolve.json` and `COMPASS.md`).
    - If it reports `evolve needs a running baseline` (build or start failed), **stop**. Show the output, say that evolve needs a baseline that builds and starts, and ask the user to fix it. Run `--baseline` again afterwards.
 7. Show the **known issues** from `evolve.json` (`knownIssues`): console errors, routes with horizontal scroll, failing tests. A round may not add new ones and may fix old ones.
-8. Modernize only: continue with the setup block in "Next in modernize mode".
+8. Modernize only: run the setup block (see "Setup block (modernize)") now, as the end of Start, and stop there for the user's confirmation.
 9. Offer `/evolve board` and `/evolve next`.
 
 ## Next (invent mode)
@@ -108,8 +108,8 @@ The round subagent works in the repo on branch `evolve/<run>`.
 4. **Build.** Change the code. Keep the app runnable. Never invent data.
 5. **Check.** `check.mjs <repo> --round N`. Exit 0 means all hard guardrails passed. It writes `rounds/rNNN/metrics.json`, `guardrails.json` and `shots/`. Read the `FAIL` lines.
 6. **Fix.** On failure, fix the cause and run the check again. At most `maxAttempts` attempts in total (default 3, the first build counts as attempt 1). Count them for the summary field `attempts`.
-7. **Ship.** Write the summary file to `.evolve/local/summary-rNNN.json` (fields in `references/round-summary-schema.md`), then
-   `ship.mjs <repo> --round N --summary .evolve/local/summary-rNNN.json`.
+7. **Ship.** Write the summary file to `<repo>/.evolve/local/summary-rNNN.json` (absolute path; fields in `references/round-summary-schema.md`), then
+   `ship.mjs <repo> --round N --summary <repo>/.evolve/local/summary-rNNN.json`.
    - Guardrails passed: `status: "shipped"`.
    - Still failing after `maxAttempts`: `status: "reverted"` with a `revertReason` naming the failed guardrail. Do not try to ship a failing round.
 8. **Report** one line to the main session: shipped or reverted, round number, title. Do not repeat the summary.
@@ -129,17 +129,17 @@ For `status: "reverted"` ship itself resets the branch to the round's start comm
 No new feature. Reduce clutter and quality debt measured since the block started: soft guardrails that got worse (`main-content-top`, `controls-above`, `page-bytes`), duplicated or unneeded UI, dead code, build warnings.
 Set `tidy: true`. Hard guardrails apply as always. The rule "no polish-only rounds" does not apply here.
 
-## Next in modernize mode
+## Modernize mode
 
 Rounds are roadmap steps, not ideas; see `references/modernize-playbook.md`.
 
-**Setup block** (first `/evolve next`, outside the chosen rounds, no round number is spent):
+**Setup block (modernize)** (the end of `/evolve start`, outside the chosen rounds, no round number is spent):
 1. `scan.mjs <repo> --round 1` (it commits its own files).
 2. `check.mjs <repo> --record-characterisation`. **Without a recording modernize mode is a hard fail**: every `check.mjs --round` reports the hard guardrail `characterisation` as failed. Add the key flows to `routes` and the endpoints to `endpoints` first; put volatile JSON keys (ids, timestamps) into `characterisation.ignore`.
 3. Write `.evolve/ROADMAP.md` with the target stack from the interview, one small step per round.
-4. Commit what you wrote and the recording (`git add .evolve && git commit -m "evolve: characterisation and roadmap"`) and **stop**. The user confirms or edits the roadmap. Only then do blocks run.
+4. Commit what you wrote and the recording (`git add .evolve && git commit -m "evolve: characterisation and roadmap"`) and **stop**. The user confirms or edits the roadmap. Only then does `/evolve next` run the chosen blocks.
 
-**Blocks.** Same orchestration as invent mode (one subagent per round, `summary.json` check, stop on failure, block summary). Differences:
+**Blocks** (`/evolve next`). Same orchestration as invent mode: a scan per block (`scan.mjs` at the block's first round), one subagent per round, `summary.json` check, stop on failure, block summary. Differences:
 - Round N is roadmap step N. No idea, no `idea-rules.md`; `compass` in the summary may be `[]`, `compassCheck` may be `""`.
 - All hard guardrails apply, including `characterisation`. A failing characterisation means behaviour changed; fix the step, never re-record to make it green unless the user asks.
 - The tidy-up round is code-level only (dead code, duplication, build warnings) and must not change behaviour.
@@ -156,7 +156,7 @@ Start or reopen the dashboard (localhost only):
 ## Status
 
 Short text, no changes: run name, mode, branch; block and last finished round; for the last round title, status and `guardrails.json` result (failed hard checks by name);
-known issues count; open question (e.g. a stopped block). Usage: run `usage.mjs <repo>` (it commits its own files) or read `usage.json`,
+known issues count; open question (e.g. a stopped block). Usage: this runs `usage.mjs <repo>`, which may commit `evolve: usage` (its own files only),
 and show tokens and "≈ … (estimate)". Say if `usage.json` is older than the last round.
 
 ## Review

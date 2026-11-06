@@ -56,3 +56,13 @@ test('commitAll, head, diffStat, resetHard', () => {
     assert.equal(fs.readFileSync(path.join(repo, 'f.txt'), 'utf8'), 'one\n');
   } finally { rm(repo); }
 });
+
+test('commitPaths with an empty path list commits nothing and stages nothing', () => {
+  const repo = tmpRepo();
+  try {
+    fs.writeFileSync(path.join(repo, 'new.txt'), 'x');
+    assert.equal(git.commitPaths(repo, [], 'nope'), false);
+    const st = execFileSync('git', ['status', '--porcelain'], { cwd: repo, encoding: 'utf8' });
+    assert.equal(st.trim(), '?? new.txt');
+  } finally { rm(repo); }
+});

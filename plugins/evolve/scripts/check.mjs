@@ -88,6 +88,7 @@ async function main(args) {
   const repo = path.resolve(args.find((a) => !a.startsWith('--') && !/^\d+$/.test(a)) ?? '.');
   const config = readConfig(repo);
 
+  // test-only: skip dependency install (EVOLVE_SKIP_DEPS)
   // first baseline installs Playwright (and Lighthouse) into ~/.cache/evolve; tests skip it
   if (args.includes('--baseline') && !process.env.EVOLVE_SKIP_DEPS) await ensureDeps({ withLighthouse: true });
 

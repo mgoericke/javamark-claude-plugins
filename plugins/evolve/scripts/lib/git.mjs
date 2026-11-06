@@ -22,6 +22,7 @@ export function commitAll(repo, message) {
 
 // Commit only the given paths (relative to repo); skips when nothing changed. Returns true when a commit was made.
 export function commitPaths(repo, paths, message) {
+  if (!paths.length) return false; // never fall back to staging everything
   run(repo, 'add', '-A', '--', ...paths);
   if (run(repo, 'status', '--porcelain', '--', ...paths).trim() === '') return false;
   run(repo, 'commit', '-q', '-m', message, '--', ...paths);

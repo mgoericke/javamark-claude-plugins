@@ -12,7 +12,7 @@ Load the `evolve` skill and follow the section that matches the first word of th
 | Argument | Skill section |
 |---|---|
 | `start` | Start |
-| `next` | Next (invent mode) or Next in modernize mode |
+| `next` | Next (invent mode); for modernize mode also "Modernize mode" |
 | `board` | Board |
 | `status` | Status |
 | `review` | Review |

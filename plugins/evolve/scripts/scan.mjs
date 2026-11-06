@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readConfig, roundDir } from './lib/config.mjs';
+import { readConfig, roundDir, evolveDir, pad } from './lib/config.mjs';
 import { startApp } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { head, recentSubjects, commitPaths } from './lib/git.mjs';
@@ -76,7 +76,9 @@ export async function scan(repo, round) {
   const config = readConfig(repo);
   const dir = roundDir(repo, round);
   fs.mkdirSync(dir, { recursive: true });
-  const app = await startApp(config.app, { cwd: repo, log: path.join(dir, 'scan-app.log') });
+  const logDir = path.join(evolveDir(repo), 'local', 'logs'); // never committed
+  fs.mkdirSync(logDir, { recursive: true });
+  const app = await startApp(config.app, { cwd: repo, log: path.join(logDir, `scan-r${pad(round)}.log`) });
   try {
     const routes = await walkRoutes(app.url, config.routes, path.join(dir, 'scan-shots'));
     const endpoints = await findEndpoints(repo, app.url);
@@ -103,8 +105,13 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
       console.log(`scan r${round}: ${r.routes.length} route views, ${r.endpoints.endpoints.length} endpoints`);
       // commit only what the scan wrote, so the next round starts from a clean tree
       const rel = path.relative(path.resolve(repo), roundDir(path.resolve(repo), round));
-      const paths = ['scan.json', 'scan-shots', 'scan-app.log'].map((f) => path.join(rel, f)).filter((f) => fs.existsSync(path.resolve(repo, f)));
-      commitPaths(path.resolve(repo), paths, `evolve: scan r${String(round).padStart(3, '0')}`);
+      const paths = ['scan.json', 'scan-shots'].map((f) => path.join(rel, f)).filter((f) => fs.existsSync(path.resolve(repo, f)));
+      try {
+        commitPaths(path.resolve(repo), paths, `evolve: scan r${String(round).padStart(3, '0')}`);
+      } catch (e) {
+        console.error(`evolve scan: commit failed: ${String(e.stderr || e.message).trim()}`);
+        process.exit(1);
+      }
     },
     (e) => { console.error(e.message); process.exit(1); },
   );

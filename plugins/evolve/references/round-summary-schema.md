@@ -2,7 +2,7 @@
 
 `ship.mjs` validates the summary with `validateSummary` (`scripts/lib/summary.mjs`) before it writes
 `.evolve/rounds/rNNN/summary.json`. The round agent writes a summary file (suggested path
-`.evolve/local/summary-rNNN.json`, which is gitignored) and passes it with `--summary`. Ship fills in some fields itself.
+`<repo>/.evolve/local/summary-rNNN.json` with the absolute repo path, which is gitignored) and passes it with `--summary`. Ship fills in some fields itself.
 
 ## Fields
 
