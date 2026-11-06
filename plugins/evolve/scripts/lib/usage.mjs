@@ -69,7 +69,8 @@ export function findTranscripts(marker, root = defaultRoot(), { since, known = [
     if (!since) return true;
     try { return fs.statSync(f).mtime >= since; } catch { return false; }
   };
-  const knownSet = new Set(known.filter((f) => fs.existsSync(f)));
+  // known files are checked again, so an entry recorded by an older matching rule does not stick
+  const knownSet = new Set(known.filter((f) => fs.existsSync(f) && fileContains(f, marker)));
   for (const f of knownSet) addSession(...sessionOf(f));
 
   let projects = [];

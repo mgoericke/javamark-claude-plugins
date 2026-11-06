@@ -95,6 +95,13 @@ test('a session that only quotes the marker is not counted', () => {
   assert.deepEqual(findTranscripts('evolve-run:x:1', root), []);
 });
 
+test('a known transcript that only quotes the marker is dropped', () => {
+  const root = tmp();
+  const q = path.join(root, 'observer', 'o.jsonl');
+  write(q, [JSON.stringify({ type: 'user', message: { role: 'user', content: 'evolve-run:x:1' } })]);
+  assert.deepEqual(findTranscripts('evolve-run:x:1', root, { known: [q] }), []);
+});
+
 test('priceOf strips the snapshot date', () => {
   const prices = { 'claude-haiku-4-5': { input: 1 } };
   assert.equal(priceOf(prices, 'claude-haiku-4-5-20251001'), prices['claude-haiku-4-5']);
@@ -148,10 +155,10 @@ test('findTranscripts skips files older than since', () => {
   assert.deepEqual(findTranscripts('evolve-run:x:1', root, { since: t }), [fresh]);
 });
 
-test('known paths are included without scanning', () => {
+test('known paths stay when they still carry the marker; missing ones are dropped', () => {
   const root = tmp();
   const k = path.join(root, 'p', 'k.jsonl');
-  write(k, ['no marker here']);
+  write(k, [ran('evolve-run:x:1')]);
   const missing = path.join(root, 'p', 'gone.jsonl');
   assert.deepEqual(findTranscripts('evolve-run:x:1', root, { known: [k, missing] }), [k]);
 });
@@ -188,4 +195,24 @@ test('run total counts only entries inside the run window', async () => {
   writeConfig(repo, applyDefaults({ run: 'w', mode: 'invent', app: { kind: 'web', start: 's', url: 'u' }, marker: 'evolve-run:w:1', createdAt: '2026-01-02T00:00:00Z' }));
   const r = computeUsage(repo, { root, now: new Date('2026-01-03T00:00:00Z') });
   assert.equal(r.total.input, 10);
+});
+
+test('run total ends with the last finished round', async () => {
+  const { computeUsage } = await import('../usage.mjs');
+  const { applyDefaults, writeConfig } = await import('../lib/config.mjs');
+  const repo = tmp();
+  const root = tmp();
+  const tok = (n) => ({ input_tokens: n, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 });
+  write(path.join(root, 'p', 's.jsonl'), [
+    ran('evolve-run:e:1'),
+    line('in', 'claude-opus-5-5', '2026-01-02T01:00:00Z', tok(10)),
+    line('after', 'claude-opus-5-5', '2026-01-02T05:00:00Z', tok(1000)),
+  ]);
+  writeConfig(repo, applyDefaults({ run: 'e', mode: 'invent', app: { kind: 'web', start: 's', url: 'u' }, marker: 'evolve-run:e:1', createdAt: '2026-01-02T00:00:00Z' }));
+  const r1 = path.join(repo, '.evolve', 'rounds', 'r001');
+  fs.mkdirSync(r1, { recursive: true });
+  fs.writeFileSync(path.join(r1, 'summary.json'), JSON.stringify({ startedAt: '2026-01-02T00:30:00Z', endedAt: '2026-01-02T02:00:00Z' }));
+  const r = computeUsage(repo, { root, now: new Date('2026-01-03T00:00:00Z') });
+  assert.equal(r.total.input, 10);
+  assert.equal(r.until, '2026-01-02T02:00:00.000Z');
 });
