@@ -15,7 +15,7 @@ evolve never pushes, merges or deletes branches. Publishing is your call.
 ## Install
 
 ```bash
-/plugin install evolve@javamark-claude-skills
+/plugin install evolve@javamark-claude-plugins
 ```
 
 ## Commands

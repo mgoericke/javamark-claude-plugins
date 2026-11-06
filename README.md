@@ -49,7 +49,7 @@ Each round ships one bold idea (invent mode) or one roadmap step (modernize mode
 
 **Install:**
 ```bash
-/plugin install evolve@javamark-claude-skills
+/plugin install evolve@javamark-claude-plugins
 ```
 
 **Use:** `/evolve start`, then `/evolve next`, `/evolve board`, `/evolve status`, `/evolve review`.
