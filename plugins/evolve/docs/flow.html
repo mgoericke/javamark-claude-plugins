@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>evolve – Ablauf</title>
+<meta name="description" content="Wie das Plugin evolve arbeitet: Befehle, Runden, Leitplanken und die Bausteine dahinter.">
+<script>
+  // follow the system until the viewer picks a theme
+  if (matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/basecoat-css@1.1.0/dist/basecoat.cdn.min.css">
+<style>
+/* same look as the dashboard: Basecoat tokens, evolve teal, marker yellow for "involved here" */
+:root {
+  --font-sans: "Geist", system-ui, sans-serif;
+  --surface: var(--card); --ink: var(--foreground); --ink-soft: var(--muted-foreground); --ink-mute: var(--muted-foreground); --line: var(--border); --bg: var(--muted);
+  --accent: oklch(.52 .1 195); --accent-soft: oklch(.95 .03 195);
+  --marker: oklch(.86 .16 90); --marker-soft: oklch(.86 .16 90 / .3);
+  --ok: oklch(.55 .13 150); --fail: oklch(.58 .2 27);
+  --lane-you: oklch(.55 .16 290); --lane-main: oklch(.52 .1 195); --lane-agent: oklch(.55 .14 250); --lane-script: oklch(.6 .12 65); --lane-files: oklch(.55 .02 250);
+}
+.dark {
+  --accent: oklch(.74 .1 195); --accent-soft: oklch(.3 .05 195);
+  --marker: oklch(.84 .15 90); --marker-soft: oklch(.84 .15 90 / .22);
+  --ok: oklch(.75 .14 150); --fail: oklch(.72 .17 27);
+  --lane-you: oklch(.72 .13 290); --lane-main: oklch(.74 .1 195); --lane-agent: oklch(.72 .12 250); --lane-script: oklch(.78 .12 70); --lane-files: oklch(.72 .02 250);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--background); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: var(--accent); }
+.page { max-width: 76rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+header h1 { display: flex; align-items: center; gap: .6rem; font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem); font-weight: 600; line-height: 1.1; margin: 0; letter-spacing: -.03em; }
+header h1 svg { color: var(--accent); flex: none; }
+header p { max-width: 44rem; color: var(--ink-soft); margin: .7rem 0 0; }
+
+.controls { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; margin: 1.6rem 0 1.2rem; }
+.btn[aria-pressed="true"], .btn[aria-pressed="true"]:hover { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+.legend { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .82rem; color: var(--ink-soft); margin: 0 0 0 auto; }
+.legend span::before { content: ""; display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .35rem; background: var(--c); vertical-align: -.05rem; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: 1.5rem; align-items: start; }
+@media (max-width: 960px) { .layout { grid-template-columns: 1fr; } .side { position: static !important; } .legend { margin-left: 0; } }
+
+.phase { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius, .625rem); padding: 1rem 1rem 1.1rem; margin-bottom: 1rem; }
+.phase-head { display: flex; align-items: baseline; gap: .7rem; flex-wrap: wrap; margin-bottom: .8rem; }
+.phase-head code { font: 600 1rem var(--font-sans); background: var(--accent-soft); color: var(--accent); padding: .1rem .55rem; border-radius: 6px; }
+.phase-head span { color: var(--ink-soft); font-size: .9rem; }
+
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.step { position: relative; display: grid; grid-template-columns: 7.2rem minmax(0, 1fr); gap: .8rem; align-items: start; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: calc(var(--radius, .625rem) - 2px); background: var(--surface); cursor: pointer; text-align: left; width: 100%; color: inherit; font: inherit; box-shadow: inset 3px 0 0 var(--c); }
+.step:hover { background: var(--bg); }
+.step:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.step.is-active { box-shadow: inset 3px 0 0 var(--c), 0 0 0 2px var(--c); background: color-mix(in oklch, var(--c) 7%, var(--surface)); }
+.step.is-lit { background: var(--marker-soft); }
+.step .who { font-size: .76rem; font-weight: 500; color: var(--c); padding-top: .15rem; }
+.step strong { display: block; font-weight: 600; }
+.step small { display: block; color: var(--ink-soft); font-size: .86rem; }
+.step[hidden] { display: none; }
+.step.decision { border-style: dashed; }
+.only { font-size: .7rem; font-weight: 500; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 .45rem; margin-left: .35rem; vertical-align: .1rem; }
+
+.loop { position: relative; border: 1.5px dashed var(--line); border-radius: var(--radius, .625rem); padding: .9rem .8rem .8rem 2.4rem; margin: .5rem 0; }
+.loop-label { position: absolute; top: -.75rem; left: 1rem; background: var(--surface); padding: 0 .45rem; font-size: .8rem; font-weight: 500; color: var(--ink-soft); }
+.loop svg { position: absolute; left: .55rem; top: 1rem; bottom: 1rem; height: calc(100% - 2rem); width: 1.2rem; color: var(--ink-mute); }
+.branch { margin: .1rem 0 0 7.2rem; padding-left: .8rem; font-size: .86rem; color: var(--ink-soft); }
+.branch b { color: var(--fail); font-weight: 600; }
+.branch em { font-style: normal; color: var(--ok); font-weight: 600; }
+
+.side { position: sticky; top: 1rem; display: grid; gap: 1rem; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius, .625rem); padding: 1rem; }
+.panel h2 { font-size: 1rem; font-weight: 600; margin: 0 0 .6rem; }
+.detail-who { font-size: .8rem; font-weight: 500; color: var(--c, var(--accent)); margin: 0; }
+.detail h3 { margin: .1rem 0 .4rem; font-size: 1.15rem; font-weight: 600; line-height: 1.25; letter-spacing: -.01em; }
+.detail p { margin: 0 0 .6rem; color: var(--ink-soft); }
+.detail ul { margin: 0; padding-left: 1.1rem; color: var(--ink-soft); }
+.tree { list-style: none; margin: 0; padding: 0; font-size: .9rem; }
+.tree li { margin: 0; }
+.tree .dir { color: var(--ink-mute); font-weight: 500; font-size: .8rem; margin-top: .55rem; }
+.tree button { display: flex; width: 100%; justify-content: space-between; gap: .5rem; border: 0; background: none; padding: .22rem .45rem; border-radius: 6px; cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.tree button:hover { background: var(--bg); }
+.tree button.is-lit { background: var(--marker-soft); font-weight: 600; }
+.tree button.is-picked { outline: 2px solid var(--marker); }
+.tree button span { color: var(--ink-mute); font-size: .78rem; white-space: nowrap; }
+.hint { font-size: .82rem; color: var(--ink-mute); margin: .6rem 0 0; }
+@media (prefers-reduced-motion: no-preference) { .step { transition: background-color .2s ease, box-shadow .2s ease; } }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <h1><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18c3-9 7-12 16-12"/><path d="M15 3l5 3-3 5"/><circle cx="4" cy="18" r="2"/></svg>evolve: so läuft ein Lauf</h1>
+    <p>Ein Befehl, fünf Unterbefehle. Runde für Runde eine mutige Idee (oder ein Modernisierungsschritt), nach jedem Block hältst du an. Klick auf einen Schritt zeigt, was passiert und welche Bausteine des Plugins beteiligt sind; ein Klick auf einen Baustein zeigt, wo er gebraucht wird.</p>
+  </header>
+
+  <div class="controls">
+    <div class="button-group" role="group" aria-label="Modus">
+      <button type="button" class="btn" data-variant="outline" data-size="sm" data-mode="invent" aria-pressed="true">invent</button><button type="button" class="btn" data-variant="outline" data-size="sm" data-mode="modernize" aria-pressed="false">modernize</button>
+    </div>
+    <button type="button" class="btn" data-size="sm" data-play>▶ Ablauf abspielen</button>
+    <button type="button" class="btn" data-variant="outline" data-size="icon-sm" data-theme-toggle aria-label="Hell oder dunkel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+    <p class="legend" aria-label="Wer handelt">
+      <span style="--c: var(--lane-you)">Du</span>
+      <span style="--c: var(--lane-main)">Claude (Hauptsitzung)</span>
+      <span style="--c: var(--lane-agent)">Runden-Agent</span>
+      <span style="--c: var(--lane-script)">Skript</span>
+      <span style="--c: var(--lane-files)">Dateien</span>
+    </p>
+  </div>
+
+  <div class="layout">
+    <main id="flow"></main>
+    <aside class="side">
+      <section class="panel detail" aria-live="polite" id="detail">
+        <p class="detail-who">Schritt wählen</p>
+        <h3>Klick auf einen Schritt links</h3>
+        <p>Hier steht dann, was in dem Schritt passiert, was geprüft wird und welche Dateien entstehen.</p>
+      </section>
+      <section class="panel">
+        <h2>Bausteine des Plugins</h2>
+        <ul class="tree" id="tree"></ul>
+        <p class="hint">Gelb markiert: an diesem Schritt beteiligt.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<script>
+// Who acts: lane colour per step
+var LANES = { you: ['Du', '--lane-you'], main: ['Claude', '--lane-main'], agent: ['Runden-Agent', '--lane-agent'], script: ['Skript', '--lane-script'], files: ['Dateien', '--lane-files'] };
+
+// The plugin's parts; "uses" in the steps points at these keys
+var PARTS = [
+  { dir: 'commands/' },
+  { key: 'cmd', name: 'evolve.md', note: 'der eine Befehl' },
+  { dir: 'skills/evolve/' },
+  { key: 'skill', name: 'SKILL.md', note: 'Rundenprotokoll' },
+  { dir: 'references/' },
+  { key: 'compass', name: 'compass-interview.md', note: 'Interview' },
+  { key: 'ideas', name: 'idea-rules.md', note: 'was „mutig“ heißt' },
+  { key: 'modern', name: 'modernize-playbook.md', note: 'nur modernize' },
+  { key: 'schema', name: 'round-summary-schema.md', note: 'summary.json' },
+  { dir: 'scripts/' },
+  { key: 'scan', name: 'scan.mjs', note: 'Playwright, Code' },
+  { key: 'check', name: 'check.mjs', note: 'Leitplanken' },
+  { key: 'ship', name: 'ship.mjs', note: 'Commit, Tag, Bilder' },
+  { key: 'usage', name: 'usage.mjs', note: 'Tokens je Runde' },
+  { dir: 'dashboard/' },
+  { key: 'board', name: 'server.mjs + index.html', note: 'lokal' },
+  { dir: 'im Ziel-Repo: .evolve/' },
+  { key: 'config', name: 'evolve.json · COMPASS.md', note: 'Lauf' },
+  { key: 'rounds', name: 'rounds/rNNN/ · CHANGELOG.md', note: 'je Runde' },
+  { key: 'roadmap', name: 'ROADMAP.md', note: 'nur modernize' }
+];
+
+// The flow. mode: undefined = both, 'modernize' / 'invent' = only there. Text per mode where it differs.
+var FLOW = [
+  { cmd: '/evolve start', sub: 'einmal pro Lauf', steps: [
+    { id: 'interview', lane: 'you', title: 'Interview', text: 'Ziel-App, Build-, Test- und Startbefehl, Routen, Modus, Runden pro Block und Anzahl der Blöcke, der Kompass.',
+      more: 'Kurz und konkret: evolve fragt nur, was es nicht selbst erkennt. Der Kompass hält fest, wofür die App steht, für wen sie ist und was nie passieren darf (bei Rasen-Radar: keine Quoten, kein Tippspiel, KI immer markiert).',
+      list: ['Modus invent oder modernize', 'z. B. 3 Blöcke × 5 Runden', 'modernize: Zielstack, z. B. Quarkus, cloud-fähig'], uses: ['cmd', 'compass', 'config'] },
+    { id: 'detect', lane: 'main', title: 'Stack erkennen', text: 'package.json, pom.xml, README, CLAUDE.md, Git-Historie lesen – Befehle und Routen vorschlagen.',
+      more: 'Was sich ablesen lässt, wird vorgeschlagen statt gefragt. Unklares landet als Rückfrage im Interview.', uses: ['scan'] },
+    { id: 'baseline', lane: 'script', title: 'Runde 0: Ausgangslage', text: 'Scan, Leitplanken messen, Screenshots auf Desktop und 390 px, bekannte Probleme festhalten.',
+      more: 'Alles Spätere wird an Runde 0 gemessen. Schon vorhandene Fehler (rote Tests, Konsolenfehler) gelten als bekannt und blockieren nicht – neue sind verboten. Startet die App gar nicht, hört evolve hier auf.',
+      list: ['Lighthouse Leistung und Barrierefreiheit, CLS', 'wo der Hauptinhalt mobil beginnt', 'Daten des Backends und wie viel die UI davon nutzt'], uses: ['scan', 'check', 'rounds'] },
+    { id: 'branch', lane: 'files', title: 'Branch evolve/<lauf> und .evolve/', text: 'evolve.json, COMPASS.md, rounds/r000/ – alles im Ziel-Repo, auf dem Lauf-Branch committet.',
+      more: 'Jeder Lauf hat seinen eigenen Branch. Gepusht wird nie automatisch.', uses: ['config', 'rounds'] }
+  ]},
+  { cmd: '/evolve next', sub: 'ein Block pro Aufruf', steps: [
+    { id: 'setup', lane: 'main', mode: 'modernize', title: 'Setup-Block', text: 'Verhalten festhalten: Playwright-Rundgänge der Hauptabläufe, aufgezeichnete HTTP-Antworten. Dann ROADMAP.md.',
+      more: 'Läuft einmal vor dem ersten Block und zählt nicht zu deinen Runden. Die Charakterisierung wird zur harten Leitplanke: Nach jedem Migrationsschritt muss sie grün sein.', uses: ['modern', 'scan', 'roadmap'] },
+    { id: 'roadmap-ok', lane: 'you', mode: 'modernize', title: 'Roadmap freigeben', text: 'Du liest die Schritte, änderst oder streichst – erst dann beginnt die Migration.', uses: ['roadmap'] },
+    { loop: true, label: 'je Runde, als eigener Subagent', steps: [
+      { id: 'read', lane: 'agent', title: 'Lesen', text: 'Kompass, die letzten Einträge im Log, der aktuelle Scan.',
+        more: 'Jede Runde startet mit frischem Kontext. So passt auch ein langer Block, und keine Runde schleppt die Fehlversuche der vorigen mit.', uses: ['skill', 'config', 'rounds'] },
+      { id: 'idea', lane: 'agent', title: { invent: 'Eine mutige Idee wählen', modernize: 'Nächster Roadmap-Schritt' },
+        text: { invent: 'Mutig heißt: Wer die App nutzt, merkt es sofort oder handelt anders. Bevorzugt: Daten, die das Backend hat und die UI noch nicht zeigt.', modernize: 'Genau ein Schritt aus ROADMAP.md – das Verhalten bleibt gleich.' },
+        more: 'Die Idee wird mit Titel, Begründung und den Kompass-Regeln notiert, denen sie dient. Ideen gegen den Kompass fallen raus.', uses: ['ideas', 'skill'] },
+      { id: 'build', lane: 'agent', title: 'Bauen', text: { invent: 'Feature umsetzen, bei Bedarf mit neuem Endpunkt.', modernize: 'Migrationsschritt umsetzen.' }, uses: ['skill'] },
+      { id: 'check', lane: 'script', title: 'Leitplanken prüfen', text: 'Build, Tests, Start, Playwright-Rundgang (keine neuen Konsolenfehler, nichts scrollt seitlich bei 390 px), Lighthouse gegen Runde 0.',
+        more: 'Hart: muss bestehen. Weich: wird gemessen und angezeigt – etwa, wie weit der Hauptinhalt nach unten rutscht. Weiche Werte lösen die Aufräumrunde aus.',
+        list: { invent: ['Build und Tests grün', 'App startet und antwortet', 'Smoke-Rundgang aller Routen', 'Leistung −5, CLS +0,05 höchstens'], modernize: ['alles aus invent', 'plus: jede Charakterisierung grün'] }, uses: ['check'] },
+      { id: 'fix', lane: 'agent', decision: true, title: 'Nicht bestanden?', text: 'Bis zu drei Reparaturversuche. Klappt es nicht: zurück auf den Stand vor der Runde, Grund ins Log.',
+        more: 'Der Branch enthält nie eine kaputte Runde. Eine zurückgedrehte Runde bleibt im Dashboard sichtbar – mit dem Grund.', uses: ['check', 'rounds'] },
+      { id: 'ship', lane: 'script', title: 'Ausliefern', text: 'Commit und Tag evolve-<lauf>-rNNN, Screenshots, Pixel-Diff zur Vorrunde, summary.json, CHANGELOG.',
+        more: 'Aus Tag und Screenshots baut das Dashboard später die Ansicht dieser Runde und das Overlay mit den Änderungen.', uses: ['ship', 'schema', 'rounds'] },
+      { id: 'tidy', lane: 'agent', title: 'Letzte Runde im Block: aufräumen', text: { invent: 'Keine neue Funktion – weniger Ballast, Qualitätsschulden des Blocks abbauen.', modernize: 'Nur Code: toter Code, Doppeltes, Build-Warnungen. Verhalten bleibt gleich.' },
+        more: 'Die Lehre aus Rasen-Radar: Mutige Runden stapeln Funktionen. Die Aufräumrunde hält die App benutzbar.', uses: ['skill', 'check'] }
+    ]},
+    { id: 'stop', lane: 'you', title: 'Block-Halt', text: 'Zusammenfassung, beste Ideen, Kennzahlen, Kosten. Du entscheidest: weiter, Kompass ändern oder aufhören.',
+      more: 'Hier kamen bei Rasen-Radar die wichtigsten Korrekturen – jetzt ist der Halt eingeplant statt Zufall.', uses: ['usage', 'rounds'] }
+  ]},
+  { cmd: '/evolve board', sub: 'jederzeit', steps: [
+    { id: 'board', lane: 'script', title: 'Dashboard', text: 'Verbrauch und Modelle oben, Runden links, der Stand der gewählten Runde in der Mitte, Overlay mit den Änderungen.',
+      more: 'Für jede Runde startet das Dashboard die App aus ihrem Tag in einem eigenen Worktree (höchstens zwei gleichzeitig). Klappt das nicht, zeigt es die Screenshots.', uses: ['board', 'usage', 'rounds'] }
+  ]},
+  { cmd: '/evolve review', sub: 'am Ende', steps: [
+    { id: 'review', lane: 'main', title: 'Behalten, anpassen, streichen', text: 'Jede Runde mit Grund bewertet, in TRIAGE.md – die Übergabe ans echte Produkt.',
+      more: 'Bei Rasen-Radar wurden daraus User Stories für das echte Repo.', uses: ['rounds'] }
+  ]}
+];
+
+var mode = 'invent';
+function pick(v) { return v && typeof v === 'object' && !Array.isArray(v) ? v[mode] : v; }
+
+function stepEl(s) {
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'step' + (s.decision ? ' decision' : '');
+  b.dataset.id = s.id;
+  b.dataset.uses = s.uses.join(' ');
+  if (s.mode) b.dataset.only = s.mode;
+  b.style.setProperty('--c', 'var(' + LANES[s.lane][1] + ')');
+  b.innerHTML = '<span class="who">' + LANES[s.lane][0] + '</span><span><strong></strong><small></small></span>';
+  return b;
+}
+function fillStep(b, s) {
+  b.querySelector('strong').innerHTML = '';
+  b.querySelector('strong').textContent = pick(s.title);
+  if (s.mode) { var o = document.createElement('span'); o.className = 'only'; o.textContent = 'nur ' + s.mode; b.querySelector('strong').appendChild(o); }
+  b.querySelector('small').textContent = pick(s.text);
+  b.hidden = !!s.mode && s.mode !== mode;
+}
+
+var byId = {};
+function render() {
+  var root = document.getElementById('flow');
+  FLOW.forEach(function (phase) {
+    var sec = document.createElement('section');
+    sec.className = 'phase';
+    sec.innerHTML = '<div class="phase-head"><code></code><span></span></div><ol class="steps"></ol>';
+    sec.querySelector('code').textContent = phase.cmd;
+    sec.querySelector('span').textContent = phase.sub;
+    var ol = sec.querySelector('ol');
+    phase.steps.forEach(function (s) {
+      var li = document.createElement('li');
+      if (s.loop) {
+        var box = document.createElement('div');
+        box.className = 'loop';
+        box.innerHTML = '<span class="loop-label"></span><svg viewBox="0 0 20 100" preserveAspectRatio="none" aria-hidden="true"><path d="M14 98 H6 V2 H14" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/><path d="M10 -2 L15 2 L10 6" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><ol class="steps"></ol>';
+        box.querySelector('.loop-label').textContent = '↻ ' + s.label;
+        var inner = box.querySelector('ol');
+        s.steps.forEach(function (x) {
+          var li2 = document.createElement('li');
+          var b = stepEl(x); byId[x.id] = { el: b, data: x }; li2.appendChild(b);
+          if (x.id === 'fix') {
+            var br = document.createElement('p'); br.className = 'branch';
+            br.innerHTML = '<em>bestanden</em> → Ausliefern · <b>nach 3 Versuchen</b> → zurückdrehen, nächste Runde';
+            li2.appendChild(br);
+          }
+          inner.appendChild(li2);
+        });
+        li.appendChild(box);
+      } else {
+        var b = stepEl(s); byId[s.id] = { el: b, data: s }; li.appendChild(b);
+      }
+      ol.appendChild(li);
+    });
+    root.appendChild(sec);
+  });
+  var tree = document.getElementById('tree');
+  PARTS.forEach(function (p) {
+    var li = document.createElement('li');
+    if (p.dir) { li.className = 'dir'; li.textContent = p.dir; }
+    else {
+      var b = document.createElement('button'); b.type = 'button'; b.dataset.part = p.key;
+      b.innerHTML = '<strong></strong><span></span>';
+      b.querySelector('strong').textContent = p.name; b.querySelector('span').textContent = p.note;
+      li.appendChild(b);
+    }
+    tree.appendChild(li);
+  });
+  refresh();
+}
+function refresh() {
+  Object.keys(byId).forEach(function (k) { fillStep(byId[k].el, byId[k].data); });
+  document.querySelectorAll('[data-mode]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.mode === mode)); });
+  if (current) show(current);
+}
+
+var current = null;
+function show(id) {
+  var s = byId[id];
+  if (!s || s.el.hidden) return;
+  current = id;
+  document.querySelectorAll('.step').forEach(function (b) { b.classList.toggle('is-active', b.dataset.id === id); b.classList.remove('is-lit'); });
+  document.querySelectorAll('.tree button').forEach(function (b) {
+    b.classList.toggle('is-lit', s.data.uses.indexOf(b.dataset.part) >= 0); b.classList.remove('is-picked');
+  });
+  var d = document.getElementById('detail');
+  d.style.setProperty('--c', 'var(' + LANES[s.data.lane][1] + ')');
+  var list = pick(s.data.list);
+  d.innerHTML = '<p class="detail-who"></p><h3></h3><p class="lead"></p>' + (s.data.more ? '<p class="more"></p>' : '') + (list ? '<ul></ul>' : '');
+  d.querySelector('.detail-who').textContent = LANES[s.data.lane][0];
+  d.querySelector('h3').textContent = pick(s.data.title);
+  d.querySelector('.lead').textContent = pick(s.data.text);
+  if (s.data.more) d.querySelector('.more').textContent = s.data.more;
+  if (list) list.forEach(function (x) { var li = document.createElement('li'); li.textContent = x; d.querySelector('ul').appendChild(li); });
+}
+function showPart(key) {
+  current = null;
+  document.querySelectorAll('.step').forEach(function (b) {
+    b.classList.remove('is-active'); b.classList.toggle('is-lit', b.dataset.uses.split(' ').indexOf(key) >= 0);
+  });
+  document.querySelectorAll('.tree button').forEach(function (b) { b.classList.remove('is-lit'); b.classList.toggle('is-picked', b.dataset.part === key); });
+  var p = PARTS.filter(function (x) { return x.key === key; })[0];
+  var n = document.querySelectorAll('.step.is-lit:not([hidden])').length;
+  var d = document.getElementById('detail');
+  d.style.removeProperty('--c');
+  d.innerHTML = '<p class="detail-who">Baustein</p><h3></h3><p></p>';
+  d.querySelector('h3').textContent = p.name;
+  d.querySelector('p:last-child').textContent = 'Im Ablauf gelb markiert: ' + n + (n === 1 ? ' Schritt' : ' Schritte') + ' im Modus ' + mode + '.';
+}
+
+var timer = null;
+function play() {
+  var btn = document.querySelector('[data-play]');
+  if (timer) { clearInterval(timer); timer = null; btn.textContent = '▶ Ablauf abspielen'; return; }
+  var ids = Array.prototype.slice.call(document.querySelectorAll('.step:not([hidden])')).map(function (b) { return b.dataset.id; });
+  var i = 0;
+  btn.textContent = '■ Anhalten';
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function tick() {
+    if (i >= ids.length) { clearInterval(timer); timer = null; btn.textContent = '▶ Ablauf abspielen'; return; }
+    show(ids[i]);
+    byId[ids[i]].el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+    i++;
+  }
+  tick();
+  timer = setInterval(tick, 1600);
+}
+
+document.addEventListener('click', function (e) {
+  var step = e.target.closest('.step'); if (step) { show(step.dataset.id); return; }
+  var part = e.target.closest('[data-part]'); if (part) { showPart(part.dataset.part); return; }
+  var m = e.target.closest('[data-mode]'); if (m) { mode = m.dataset.mode; refresh(); return; }
+  if (e.target.closest('[data-play]')) { play(); return; }
+  if (e.target.closest('[data-theme-toggle]')) document.documentElement.classList.toggle('dark');
+});
+render();
+show('interview');
+</script>
+</body>
+</html>
