@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { runCommand } from '../check.mjs';
 import { applyDefaults } from '../lib/config.mjs';
 
+process.env.EVOLVE_SKIP_DEPS = '1'; // tests never install dependencies
 const check = fileURLToPath(new URL('../check.mjs', import.meta.url));
 const site = fileURLToPath(new URL('./fixtures/site', import.meta.url));
 

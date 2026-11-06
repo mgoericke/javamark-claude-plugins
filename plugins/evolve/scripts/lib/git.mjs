@@ -20,6 +20,14 @@ export function commitAll(repo, message) {
   return head(repo);
 }
 
+// Commit only the given paths (relative to repo); skips when nothing changed. Returns true when a commit was made.
+export function commitPaths(repo, paths, message) {
+  run(repo, 'add', '-A', '--', ...paths);
+  if (run(repo, 'status', '--porcelain', '--', ...paths).trim() === '') return false;
+  run(repo, 'commit', '-q', '-m', message, '--', ...paths);
+  return true;
+}
+
 export function tag(repo, name) {
   let exists = true;
   try { run(repo, 'rev-parse', '-q', '--verify', `refs/tags/${name}`); } catch { exists = false; }

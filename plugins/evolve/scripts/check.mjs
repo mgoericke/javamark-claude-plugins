@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, roundDir, evolveDir } from './lib/config.mjs';
 import { startApp, freePort } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
-import { importDep } from './lib/deps.mjs';
+import { importDep, ensureDeps } from './lib/deps.mjs';
 import { head, isClean } from './lib/git.mjs';
 import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
@@ -87,6 +87,9 @@ async function main(args) {
   const val = (flag) => { const i = args.indexOf(flag); return i >= 0 ? Number(args[i + 1]) : undefined; };
   const repo = path.resolve(args.find((a) => !a.startsWith('--') && !/^\d+$/.test(a)) ?? '.');
   const config = readConfig(repo);
+
+  // first baseline installs Playwright (and Lighthouse) into ~/.cache/evolve; tests skip it
+  if (args.includes('--baseline') && !process.env.EVOLVE_SKIP_DEPS) await ensureDeps({ withLighthouse: true });
 
   const startN = val('--start');
   if (startN !== undefined) {

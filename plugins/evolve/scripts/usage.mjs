@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, evolveDir } from './lib/config.mjs';
+import { commitPaths } from './lib/git.mjs';
 import { findTranscripts, readUsage, sumUsage, estimateCost, unpricedModels } from './lib/usage.mjs';
 
 function readJson(file) {
@@ -60,5 +61,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     process.exit(2);
   }
   const r = computeUsage(repo);
+  commitPaths(repo, ['.evolve/usage.json', '.evolve/evolve.json'], 'evolve: usage');
   console.log(`usage: ${r.total.input + r.total.output + r.total.cacheWrite + r.total.cacheRead} tokens, ≈ ${r.cost.toFixed(2)} € (Schätzung), ${Object.keys(r.rounds).length} rounds`);
 }

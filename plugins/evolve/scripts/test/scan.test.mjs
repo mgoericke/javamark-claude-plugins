@@ -66,3 +66,26 @@ test('scan CLI writes scan.json and screenshots', async (t) => {
   assert.ok(fs.existsSync(path.join(repo, '.evolve/rounds/r007/scan-shots/home-mobile.png')));
   fs.rmSync(repo, { recursive: true, force: true });
 });
+
+test('scan CLI commits only its own files and leaves the tree clean', async (t) => {
+  if (!havePw) return t.skip('playwright not installed');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-scan-'));
+  const g = (...a) => execFileSync('git', a, { cwd: repo, stdio: 'pipe', encoding: 'utf8' });
+  g('init', '-q'); g('config', 'user.email', 't@t'); g('config', 'user.name', 't');
+  fs.cpSync(site, path.join(repo, 'site'), { recursive: true });
+  fs.mkdirSync(path.join(repo, '.evolve'));
+  fs.writeFileSync(path.join(repo, '.evolve/evolve.json'), JSON.stringify({
+    run: 'demo', mode: 'invent',
+    app: { kind: 'web', start: 'static:site', url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 10000 },
+    routes: ['/'],
+  }));
+  g('add', '-A'); g('commit', '-q', '-m', 'first commit');
+  fs.writeFileSync(path.join(repo, 'stray.txt'), 'x'); // unrelated, must not be committed
+  const r = spawnSync('node', [scan, repo, '--round', '3'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(g('log', '-1', '--format=%s').trim(), 'evolve: scan r003');
+  const files = g('show', '--name-only', '--format=', 'HEAD').split('\n').filter(Boolean);
+  assert.ok(files.length > 0 && files.every((f) => f.startsWith('.evolve/rounds/r003/')), files.join(','));
+  assert.equal(g('status', '--porcelain').trim(), '?? stray.txt');
+  fs.rmSync(repo, { recursive: true, force: true });
+});

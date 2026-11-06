@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { readConfig, roundDir } from './lib/config.mjs';
 import { startApp } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
-import { head, recentSubjects } from './lib/git.mjs';
+import { head, recentSubjects, commitPaths } from './lib/git.mjs';
 
 const SKIP = new Set(['node_modules', 'target', 'build', '.evolve', '.git']);
 const SPEC = /^(openapi|swagger)\.(json|ya?ml)$/i;
@@ -99,7 +99,13 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     process.exit(2);
   }
   scan(path.resolve(repo), round).then(
-    (r) => console.log(`scan r${round}: ${r.routes.length} route views, ${r.endpoints.endpoints.length} endpoints`),
+    (r) => {
+      console.log(`scan r${round}: ${r.routes.length} route views, ${r.endpoints.endpoints.length} endpoints`);
+      // commit only what the scan wrote, so the next round starts from a clean tree
+      const rel = path.relative(path.resolve(repo), roundDir(path.resolve(repo), round));
+      const paths = ['scan.json', 'scan-shots', 'scan-app.log'].map((f) => path.join(rel, f)).filter((f) => fs.existsSync(path.resolve(repo, f)));
+      commitPaths(path.resolve(repo), paths, `evolve: scan r${String(round).padStart(3, '0')}`);
+    },
     (e) => { console.error(e.message); process.exit(1); },
   );
 }

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { findTranscripts, readUsage, sumUsage, estimateCost } from '../lib/usage.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-usage-'));
@@ -133,4 +135,23 @@ test('known paths are included without scanning', () => {
   write(k, ['no marker here']);
   const missing = path.join(root, 'p', 'gone.jsonl');
   assert.deepEqual(findTranscripts('evolve-run:x:1', root, { known: [k, missing] }), [k]);
+});
+
+test('usage CLI commits only usage.json and evolve.json, tree stays clean', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { applyDefaults, writeConfig } = await import('../lib/config.mjs');
+  const repo = tmp();
+  const g = (...a) => execFileSync('git', a, { cwd: repo, encoding: 'utf8' });
+  g('init', '-q'); g('config', 'user.email', 't@t'); g('config', 'user.name', 't');
+  writeConfig(repo, applyDefaults({ run: 't', mode: 'invent', app: { kind: 'web', start: 's', url: 'u' }, marker: 'evolve-run:t:no-such-marker-xyz' }));
+  g('add', '-A'); g('commit', '-q', '-m', 'init');
+  fs.writeFileSync(path.join(repo, 'stray.txt'), 'x');
+  const cli = fileURLToPath(new URL('../usage.mjs', import.meta.url));
+  const r = spawnSync('node', [cli, repo], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(g('log', '-1', '--format=%s').trim(), 'evolve: usage');
+  const files = g('show', '--name-only', '--format=', 'HEAD').split('\n').filter(Boolean);
+  assert.ok(files.includes('.evolve/usage.json'));
+  assert.ok(files.every((f) => ['.evolve/usage.json', '.evolve/evolve.json'].includes(f)), files.join(','));
+  assert.equal(g('status', '--porcelain').trim(), '?? stray.txt');
 });

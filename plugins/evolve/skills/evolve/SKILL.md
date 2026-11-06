@@ -40,16 +40,11 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 | `usage.mjs` | `<repo>`: finds the transcripts, writes `usage.json`, prints a one-line total |
 | `dashboard/server.mjs` | `<repo> [--port N]`: the dashboard |
 
-### Dependencies (`ensureDeps`)
+### Dependencies
 
-Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>/`. **No script installs them by itself**; scripts
-that need them fail with `evolve: run /evolve start to install ...`. Install them once in Start, and again whenever that message appears:
-
-```
-node --input-type=module -e 'const m = await import(process.argv[1]); await m.ensureDeps({ withLighthouse: true })' "file://${CLAUDE_PLUGIN_ROOT}/scripts/lib/deps.mjs"
-```
-
-It runs `npm install` and `npx playwright install chromium` and may take minutes. Lighthouse is optional: drop `{ withLighthouse: true }` if the user does not want it; the Lighthouse guardrails are then skipped.
+Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>/`. `check.mjs --baseline` installs them on its first run
+(`npm install` and `npx playwright install chromium`, it takes a while; tell the user). Scripts that need them fail with
+`evolve: run /evolve start to install ...` if they were never installed: run `check.mjs --baseline` again.
 
 ### Config (`evolve.json`) defaults
 
@@ -74,12 +69,11 @@ It runs `npm install` and `npx playwright install chromium` and may take minutes
 3. `init.mjs <repo> --run <name> --mode <mode>`. Run name: short, letters, digits, `.`, `_`, `-`.
 4. **Show the run marker** (the last line printed by init, `evolve-run:<name>:<hex>`) in your reply as plain text. Usage is found through it. Tell the user: do not paste the marker into other sessions. A transcript that merely quotes the marker is counted too, and unrelated usage would be added.
 5. Edit `.evolve/evolve.json` with the interview results (commands, `routes`, `endpoints`, `roundsPerBlock`, `blocks`, thresholds). Write `.evolve/COMPASS.md`. Do not commit yet.
-6. Install dependencies (see `ensureDeps` above).
-7. `check.mjs <repo> --baseline`. It builds, tests, starts the app, walks the routes, takes screenshots and metrics, records the known issues, and commits `evolve: baseline` (including `evolve.json` and `COMPASS.md`).
+6. `check.mjs <repo> --baseline`. It first installs dependencies if needed (slow on the first run), then builds, tests, starts the app, walks the routes, takes screenshots and metrics, records the known issues, and commits `evolve: baseline` (including `evolve.json` and `COMPASS.md`).
    - If it reports `evolve needs a running baseline` (build or start failed), **stop**. Show the output, say that evolve needs a baseline that builds and starts, and ask the user to fix it. Run `--baseline` again afterwards.
-8. Show the **known issues** from `evolve.json` (`knownIssues`): console errors, routes with horizontal scroll, failing tests. A round may not add new ones and may fix old ones.
-9. Modernize only: continue with the setup block in "Next in modernize mode".
-10. Offer `/evolve board` and `/evolve next`.
+7. Show the **known issues** from `evolve.json` (`knownIssues`): console errors, routes with horizontal scroll, failing tests. A round may not add new ones and may fix old ones.
+8. Modernize only: continue with the setup block in "Next in modernize mode".
+9. Offer `/evolve board` and `/evolve next`.
 
 ## Next (invent mode)
 
@@ -87,8 +81,7 @@ Setup: read `.evolve/evolve.json`, `.evolve/COMPASS.md`. Check the tree is clean
 rounds of `roundsPerBlock`. If all `blocks` are done, say so and suggest `/evolve review`. Block `B` covers rounds `(B-1)*roundsPerBlock+1` to `B*roundsPerBlock`.
 Show the run marker from `evolve.json` again in your reply (same warning as in Start). Start the dashboard if it is not running (see Board).
 
-**Scan.** Scanning may use a cheaper model. Run `scan.mjs <repo> --round F` with `F` the first round of the block, then commit it, because the scan writes into the tracked `.evolve/rounds/` and would dirty the tree:
-`git add .evolve && git commit -m "evolve: scan block B"`. Read `scan.json` and add what the code shows: README, CLAUDE.md, git history, which backend data the UI does not use.
+**Scan.** Scanning may use a cheaper model. Run `scan.mjs <repo> --round F` with `F` the first round of the block. The script commits its own files as `evolve: scan rNNN`, so the tree stays clean. Read `scan.json` and add what the code shows: README, CLAUDE.md, git history, which backend data the UI does not use.
 
 **Rounds.** For each round `N` of the block, in order, start **one subagent** (fresh context). Give it: the compass (`COMPASS.md`), the tail of `CHANGELOG.md` (last ~10 entries),
 the latest `scan.json` (highest-numbered `rounds/r*/scan.json`), the round number `N`, the block number, whether the round is the **tidy-up round** (the last of the block),
@@ -101,7 +94,7 @@ After each round subagent returns, the main session reads `.evolve/rounds/rNNN/s
 - `status: shipped`: note title and guardrail result, continue.
 
 **After the block.**
-1. `usage.mjs <repo>`, then `git add .evolve && git commit -m "evolve: usage block B"` (usage.mjs rewrites `usage.json` and `evolve.json`).
+1. `usage.mjs <repo>`. The script commits `usage.json` and `evolve.json` itself as `evolve: usage`.
 2. Write the block summary: what shipped (titles), the best ideas, the metric trend against round 0 (Lighthouse, CLS, `mainContentTop`, `controlsAbove` from each `metrics.json` and `guardrails.json`), reverted rounds with reasons, tokens per model and the cost. Cost is always shown as "≈ … (estimate)", never as a fact; prices are editable in `evolve.json`. Models without a price are listed as unpriced.
 3. Offer exactly three choices: **continue** (next block), **change the compass** (edit `COMPASS.md` with the user, commit it, then continue), **stop**.
 
@@ -141,10 +134,10 @@ Set `tidy: true`. Hard guardrails apply as always. The rule "no polish-only roun
 Rounds are roadmap steps, not ideas; see `references/modernize-playbook.md`.
 
 **Setup block** (first `/evolve next`, outside the chosen rounds, no round number is spent):
-1. `scan.mjs <repo> --round 1`, commit it (`git add .evolve && git commit -m "evolve: scan"`).
+1. `scan.mjs <repo> --round 1` (it commits its own files).
 2. `check.mjs <repo> --record-characterisation`. **Without a recording modernize mode is a hard fail**: every `check.mjs --round` reports the hard guardrail `characterisation` as failed. Add the key flows to `routes` and the endpoints to `endpoints` first; put volatile JSON keys (ids, timestamps) into `characterisation.ignore`.
 3. Write `.evolve/ROADMAP.md` with the target stack from the interview, one small step per round.
-4. Commit (`git add .evolve && git commit -m "evolve: characterisation and roadmap"`) and **stop**. The user confirms or edits the roadmap. Only then do blocks run.
+4. Commit what you wrote and the recording (`git add .evolve && git commit -m "evolve: characterisation and roadmap"`) and **stop**. The user confirms or edits the roadmap. Only then do blocks run.
 
 **Blocks.** Same orchestration as invent mode (one subagent per round, `summary.json` check, stop on failure, block summary). Differences:
 - Round N is roadmap step N. No idea, no `idea-rules.md`; `compass` in the summary may be `[]`, `compassCheck` may be `""`.
@@ -163,7 +156,7 @@ Start or reopen the dashboard (localhost only):
 ## Status
 
 Short text, no changes: run name, mode, branch; block and last finished round; for the last round title, status and `guardrails.json` result (failed hard checks by name);
-known issues count; open question (e.g. a stopped block). Usage: run `usage.mjs <repo>` (then commit `.evolve` as above if the tree is meant to be clean) or read `usage.json`,
+known issues count; open question (e.g. a stopped block). Usage: run `usage.mjs <repo>` (it commits its own files) or read `usage.json`,
 and show tokens and "≈ … (estimate)". Say if `usage.json` is older than the last round.
 
 ## Review
