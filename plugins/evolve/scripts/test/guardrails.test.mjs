@@ -161,3 +161,12 @@ test('an endpoint without an answer fails even if the baseline had none', () => 
   const none = metrics({ endpoints: [{ path: '/api/new', status: 0 }] });
   assert.equal(find(evaluate({ baseline: none, current: none, config }), 'endpoints').pass, false);
 });
+
+test('lighthouse missing this round is a failing soft entry, not a silent skip', () => {
+  const base = metrics({ lighthouse: { perf: 90, a11y: 90, cls: 0.01 } });
+  const r = evaluate({ baseline: base, current: metrics(), config: cfg() });
+  const c = r.soft.find((x) => x.name === 'lighthouse');
+  assert.equal(c.pass, false);
+  assert.equal(c.detail, 'lighthouse missing this round');
+  assert.equal(r.pass, true); // soft only
+});

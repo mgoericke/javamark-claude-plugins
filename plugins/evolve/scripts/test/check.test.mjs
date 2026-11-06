@@ -134,3 +134,27 @@ test('a failing or hanging setup is reported as the setup result', async () => {
     assert.match(t.metrics.setup.detail, /timed out/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('check --round writes the tree hash into guardrails.json', () => {
+  const dir = repoWith({ start: `static:${site}` });
+  try {
+    commitAll(dir);
+    spawnSync('node', [check, dir, '--baseline'], { encoding: 'utf8', env: ident });
+    spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' });
+    spawnSync('node', [check, dir, '--round', '1'], { encoding: 'utf8', env: ident });
+    const g = JSON.parse(fs.readFileSync(path.join(dir, '.evolve/rounds/r001/guardrails.json'), 'utf8'));
+    assert.match(g.treeHash, /^[0-9a-f]{40}$/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('modernize baseline does not run characterisation', async () => {
+  const { collect } = await import('../check.mjs');
+  const dir = repoWith({ start: server }, { mode: 'modernize' });
+  try {
+    const cfg = applyDefaults({ ...JSON.parse(fs.readFileSync(path.join(dir, '.evolve/evolve.json'), 'utf8')), routes: [], endpoints: [] });
+    const base = await collect(dir, cfg, path.join(dir, 'o1'), { baseline: true });
+    assert.equal(base.metrics.characterisation, undefined);
+    const round = await collect(dir, cfg, path.join(dir, 'o2'));
+    assert.match(round.metrics.characterisation.failed[0], /no characterisation recorded/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

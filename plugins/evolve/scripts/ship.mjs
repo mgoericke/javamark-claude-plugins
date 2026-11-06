@@ -79,6 +79,9 @@ export async function ship(repo, n, summaryFile) {
     const gFile = path.join(dir, 'guardrails.json');
     if (!fs.existsSync(gFile)) throw new Error(`no guardrails.json for round ${n}; run check.mjs --round ${n} first`);
     summary.guardrails = readJson(gFile);
+    if (summary.guardrails.treeHash && summary.guardrails.treeHash !== git.codeTreeHash(repo)) {
+      throw new Error(`code changed after check --round; rerun check.mjs --round ${n}`);
+    }
     if (summary.guardrails.pass !== true) throw new Error(`round ${n} cannot ship: guardrails did not pass`);
     summary.tag = tag;
     summary.files = codeFiles(repo, startSha);

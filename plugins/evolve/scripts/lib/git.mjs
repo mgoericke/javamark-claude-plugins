@@ -1,4 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 function run(repo, ...args) {
   return execFileSync('git', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -57,4 +60,18 @@ export function diffStat(repo, fromRef, toRef) {
 
 export function recentSubjects(repo, n = 20) {
   return run(repo, 'log', `-${n}`, '--format=%s').split('\n').filter(Boolean);
+}
+
+// Hash of the whole working tree (HEAD + all changes, untracked included) without .evolve/.
+// Computed in a throwaway index so the real index stays untouched.
+export function codeTreeHash(repo) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-index-'));
+  const env = { ...process.env, GIT_INDEX_FILE: path.join(tmp, 'index') };
+  const g = (...a) => execFileSync('git', a, { cwd: repo, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    g('read-tree', 'HEAD');
+    g('add', '-A');
+    g('rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', '.evolve');
+    return g('write-tree').trim();
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }

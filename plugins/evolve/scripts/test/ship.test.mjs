@@ -174,3 +174,26 @@ test('previous shots skip a shipped round without shots/', async (t) => {
     assert.equal(diffs[0].changedPixels, 0, 'compared against r000, not reported as new');
   } finally { fs.rmSync(d, { recursive: true, force: true }); }
 });
+
+test('check --round records a tree hash and ship refuses code changed afterwards', async () => {
+  const { codeTreeHash } = await import('../lib/git.mjs');
+  const d = setup();
+  try {
+    fs.writeFileSync(path.join(d, 'app.txt'), 'one\ntwo\n');
+    const gFile = path.join(d, '.evolve/rounds/r001/guardrails.json');
+    fs.writeFileSync(gFile, JSON.stringify({ pass: true, hard: [], soft: [], treeHash: codeTreeHash(d) }));
+    // .evolve changes do not count
+    fs.writeFileSync(path.join(d, '.evolve/note.txt'), 'x');
+    const head = git(d, 'rev-parse', 'HEAD');
+    fs.writeFileSync(path.join(d, 'app.txt'), 'one\ntwo\nthree\n'); // changed after the check
+    const r = run(d, summaryFile(d));
+    assert.notEqual(r.status, 0);
+    assert.match(r.stderr, /code changed after check --round; rerun check\.mjs --round 1/);
+    assert.equal(git(d, 'rev-parse', 'HEAD'), head);
+    assert.equal(git(d, 'tag'), '');
+    assert.ok(!fs.existsSync(path.join(d, '.evolve/rounds/r001/summary.json')));
+    // restoring the checked tree lets it ship
+    fs.writeFileSync(path.join(d, 'app.txt'), 'one\ntwo\n');
+    assert.equal(run(d, summaryFile(d)).status, 0);
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+});

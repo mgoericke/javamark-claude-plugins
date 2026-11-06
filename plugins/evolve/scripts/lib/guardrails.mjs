@@ -76,6 +76,7 @@ export function evaluate({ baseline, current, config }) {
 
   const lb = baseline.lighthouse;
   const lc = current.lighthouse;
+  if (lb && !lc) soft.push({ name: 'lighthouse', pass: false, value: 'missing', detail: 'lighthouse missing this round' });
   if (lb && lc) {
     const t = config.thresholds;
     const dPerf = round(lc.perf - lb.perf);

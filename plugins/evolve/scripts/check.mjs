@@ -7,7 +7,7 @@ import { readConfig, writeConfig, roundDir, evolveDir } from './lib/config.mjs';
 import { startApp, freePort, killAppsOnSignal } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { importDep, ensureDeps } from './lib/deps.mjs';
-import { head, isClean, dirtyPaths } from './lib/git.mjs';
+import { head, isClean, dirtyPaths, codeTreeHash } from './lib/git.mjs';
 import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
 const charDir = (repo) => path.join(evolveDir(repo), 'characterisation');
@@ -52,7 +52,7 @@ async function runLighthouse(url) {
   } finally { await browser?.close().catch(() => {}); }
 }
 
-export async function collect(repo, config, outDir) {
+export async function collect(repo, config, outDir, { baseline = false } = {}) {
   const notes = [];
   const m = { setup: { ok: true }, build: { ok: true }, test: { ok: true, failing: 0 }, start: { ok: false }, routes: [], endpoints: [] };
   if (config.app.setup) {
@@ -78,7 +78,7 @@ export async function collect(repo, config, outDir) {
       m.endpoints = await fetchEndpoints(handle.url, config);
       const lh = await runLighthouse(new URL(config.routes[0] ?? '/', handle.url).href);
       if (lh.metrics) m.lighthouse = lh.metrics; else notes.push(lh.note);
-      if (config.mode === 'modernize') {
+      if (config.mode === 'modernize' && !baseline) { // nothing is recorded before the baseline exists
         m.characterisation = fs.existsSync(path.join(charDir(repo), 'characterisation.json'))
           ? compareCharacterisation(charDir(repo), await snapshotCharacterisation(handle.url, config))
           : { passed: 0, failed: ['no characterisation recorded — run check.mjs --record-characterisation'] };
@@ -122,7 +122,7 @@ async function main(args) {
   const dir = roundDir(repo, n);
   fs.mkdirSync(dir, { recursive: true });
 
-  const { metrics, notes } = await collect(repo, config, dir);
+  const { metrics, notes } = await collect(repo, config, dir, { baseline: isBaseline });
   fs.writeFileSync(path.join(dir, 'metrics.json'), JSON.stringify(metrics, null, 2) + '\n');
 
   let baseline;
@@ -150,6 +150,8 @@ async function main(args) {
 
   const result = evaluate({ baseline, current: metrics, config: cfg });
   if (notes.length) result.soft.push(...notes.map((detail) => ({ name: 'note', pass: true, value: 'info', detail })));
+  // ship refuses when the code changed after this check
+  if (!isBaseline) result.treeHash = codeTreeHash(repo);
   fs.writeFileSync(path.join(dir, 'guardrails.json'), JSON.stringify(result, null, 2) + '\n');
   for (const c of [...result.hard, ...result.soft]) {
     console.log(`${c.pass ? 'PASS' : 'FAIL'} ${c.name}: ${c.value}${c.detail ? ` (${c.detail})` : ''}`);
