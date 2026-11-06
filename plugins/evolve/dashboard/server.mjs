@@ -127,11 +127,15 @@ export async function createServer({ repo, port = 4173 }) {
   };
 }
 
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
-  const args = process.argv.slice(2);
+export function parseArgs(args) {
   const pi = args.indexOf('--port');
   const port = pi >= 0 ? Number(args[pi + 1]) : 4173;
-  const repo = path.resolve(args.find((a, i) => !a.startsWith('--') && i !== pi + 1) ?? '.');
+  const repo = path.resolve(args.find((a, i) => !a.startsWith('--') && (pi < 0 || i !== pi + 1)) ?? '.');
+  return { repo, port };
+}
+
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
+  const { repo, port } = parseArgs(process.argv.slice(2));
   if (!Number.isInteger(port) || port < 0) { console.error('usage: server.mjs <repo> [--port N]'); process.exit(2); }
   const srv = await createServer({ repo, port });
   const line = `evolve dashboard: ${srv.url}`;

@@ -6,6 +6,8 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+import { detectStack } from '../init.mjs';
+
 const INIT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'init.mjs');
 
 function tmpRepo(files) {
@@ -77,6 +79,42 @@ test('init detects maven wrapper', () => {
     assert.equal(c.app.kind, 'backend');
     assert.equal(c.app.build, './mvnw -q -DskipTests package');
     assert.equal(c.app.test, './mvnw -q test');
+  } finally { rm(repo); }
+});
+
+test('detectStack: Quarkus with templates is a web app started in dev mode', () => {
+  const repo = tmpRepo({ 'pom.xml': '<project><groupId>io.quarkus.platform</groupId></project>', mvnw: '#!/bin/sh\n' });
+  try {
+    fs.mkdirSync(path.join(repo, 'src/main/resources/templates'), { recursive: true });
+    const s = detectStack(repo);
+    assert.equal(s.kind, 'web');
+    assert.equal(s.start, './mvnw -q quarkus:dev -Dquarkus.http.port={port} -Dquarkus.console.enabled=false');
+  } finally { rm(repo); }
+});
+
+test('detectStack: Spring Boot gets the port as a server argument', () => {
+  const repo = tmpRepo({ 'pom.xml': '<project><artifactId>spring-boot-starter-web</artifactId></project>' });
+  try {
+    const s = detectStack(repo);
+    assert.equal(s.kind, 'backend');
+    assert.equal(s.start, 'mvn -q spring-boot:run -Dspring-boot.run.arguments=--server.port={port}');
+  } finally { rm(repo); }
+});
+
+test('detectStack: Gradle Quarkus uses quarkusDev', () => {
+  const repo = tmpRepo({ 'build.gradle.kts': 'plugins { id("io.quarkus") }', gradlew: '#!/bin/sh\n' });
+  try {
+    const s = detectStack(repo);
+    assert.equal(s.start, './gradlew quarkusDev -Dquarkus.http.port={port} -Dquarkus.console.enabled=false');
+    assert.equal(s.build, './gradlew build -x test');
+  } finally { rm(repo); }
+});
+
+test('init creates .evolve/local/logs so output can be redirected there', () => {
+  const repo = tmpRepo({ 'index.html': '<html></html>' });
+  try {
+    assert.equal(runInit(repo).status, 0);
+    assert.ok(fs.existsSync(path.join(repo, '.evolve', 'local', 'logs')));
   } finally { rm(repo); }
 });
 

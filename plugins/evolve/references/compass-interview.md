@@ -25,7 +25,7 @@ The compass matters most. In the Rasen-Radar lab the product rules arrived mid-r
 
 ## 4. Compass (invent mode; for modernize ask for the no-gos only)
 
-Write the answers as short, checkable rules in `.evolve/COMPASS.md`. Each rule must be something an idea can be tested against.
+Write the answers as short, checkable rules in `.evolve/COMPASS.md`, in the user's language. Each rule must be something an idea can be tested against.
 
 - **Product principles**: 3 to 6 rules ("data first", "AI one click away", "newest first").
 - **No-gos**: things that must never appear (a language, a feature class, a tone). Example: no betting language.

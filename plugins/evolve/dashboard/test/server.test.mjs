@@ -7,7 +7,7 @@ import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { isClean } from '../../scripts/lib/git.mjs';
 import { makeRepo, cleanup } from './helpers.mjs';
-import { createServer } from '../server.mjs';
+import { createServer, parseArgs } from '../server.mjs';
 
 const { repo } = makeRepo();
 const srv = await createServer({ repo, port: 0 });
@@ -125,4 +125,11 @@ test('running the dashboard keeps a repo made by init clean', async () => {
     assert.equal(isClean(dir), true);
     assert.equal(g('status', '--porcelain').trim(), '');
   } finally { await s2.close(); cleanup(dir); }
+});
+
+test('parseArgs: the repo path counts with and without --port', () => {
+  assert.deepEqual(parseArgs(['/tmp/app']), { repo: '/tmp/app', port: 4173 });
+  assert.deepEqual(parseArgs(['/tmp/app', '--port', '5000']), { repo: '/tmp/app', port: 5000 });
+  assert.deepEqual(parseArgs(['--port', '5000', '/tmp/app']), { repo: '/tmp/app', port: 5000 });
+  assert.deepEqual(parseArgs([]), { repo: process.cwd(), port: 4173 });
 });

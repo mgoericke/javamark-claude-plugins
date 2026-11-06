@@ -28,9 +28,19 @@ function eachLine(file, onLine) {
   }
 }
 
+// A session belongs to the run only when an evolve script printed the marker into one of its tool results.
+// Sessions that merely quote it (memory observers, a pasted message, the assistant's own text) do not count.
+export function lineRunsMarker(line, marker) {
+  if (!line.includes(marker)) return false;
+  let o;
+  try { o = JSON.parse(line); } catch { return false; }
+  const content = o?.type === 'user' ? o.message?.content : null;
+  return Array.isArray(content) && content.some((b) => b?.type === 'tool_result' && JSON.stringify(b.content ?? '').includes(marker));
+}
+
 const fileContains = (file, marker) => {
   let hit = false;
-  eachLine(file, (l) => (hit = l.includes(marker)));
+  eachLine(file, (l) => (hit = lineRunsMarker(l, marker)));
   return hit;
 };
 
@@ -59,7 +69,8 @@ export function findTranscripts(marker, root = defaultRoot(), { since, known = [
     if (!since) return true;
     try { return fs.statSync(f).mtime >= since; } catch { return false; }
   };
-  const knownSet = new Set(known.filter((f) => fs.existsSync(f)));
+  // known files are checked again, so an entry recorded by an older matching rule does not stick
+  const knownSet = new Set(known.filter((f) => fs.existsSync(f) && fileContains(f, marker)));
   for (const f of knownSet) addSession(...sessionOf(f));
 
   let projects = [];
@@ -130,14 +141,17 @@ export function sumUsage(entries, { from, to } = {}) {
   return { total, byModel };
 }
 
+// transcripts name dated snapshots (claude-haiku-4-5-20251001); the price table uses the alias
+export const priceOf = (prices, model) => prices[model] ?? prices[model.replace(/-\d{8}$/, '')];
+
 export function estimateCost(sum, prices = {}) {
   let cost = 0;
   for (const [model, t] of Object.entries(sum.byModel)) {
-    const p = prices[model];
+    const p = priceOf(prices, model);
     if (!p) continue;
     cost += (t.input * p.input + t.output * p.output + t.cacheWrite * p.cacheWrite + t.cacheRead * p.cacheRead) / 1e6;
   }
   return cost;
 }
 
-export const unpricedModels = (sum, prices = {}) => Object.keys(sum.byModel).filter((m) => !prices[m]);
+export const unpricedModels = (sum, prices = {}) => Object.keys(sum.byModel).filter((m) => !priceOf(prices, m));

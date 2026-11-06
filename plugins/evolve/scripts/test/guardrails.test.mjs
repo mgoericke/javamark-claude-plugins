@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { evaluate, parseFailing, normaliseBody, compareCharacterisation } from '../lib/guardrails.mjs';
+import { evaluate, parseFailing, parseTestCount, countJunitReports, countWarnings, normaliseBody, compareCharacterisation } from '../lib/guardrails.mjs';
 import { applyDefaults } from '../lib/config.mjs';
 
 const cfg = (over = {}) => applyDefaults({ run: 'x', mode: 'invent', app: { kind: 'web', start: 'x', url: 'http://x' }, ...over });
@@ -178,4 +178,51 @@ test('lighthouse missing this round is a failing soft entry, not a silent skip',
   assert.equal(c.pass, false);
   assert.equal(c.detail, 'lighthouse missing this round');
   assert.equal(r.pass, true); // soft only
+});
+
+test('parseTestCount reads the total, null when the runner printed none', () => {
+  assert.equal(parseTestCount('Tests run: 3, Failures: 0\n[INFO] Tests run: 288, Failures: 0, Errors: 0, Skipped: 1'), 288);
+  assert.equal(parseTestCount('ℹ tests 123\nℹ pass 123'), 123);
+  assert.equal(parseTestCount('Tests:       4 failed, 10 passed, 14 total'), 14);
+  assert.equal(parseTestCount(''), null);
+});
+
+test('countJunitReports sums surefire reports written since the test run started', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-junit-'));
+  const dir = path.join(repo, 'target', 'surefire-reports');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'TEST-a.xml'), '<?xml version="1.0"?><testsuite name="a" tests="5" failures="0">');
+  fs.writeFileSync(path.join(dir, 'TEST-b.xml'), '<testsuite tests="7" name="b">');
+  const old = path.join(dir, 'TEST-old.xml');
+  fs.writeFileSync(old, '<testsuite tests="100">');
+  fs.utimesSync(old, new Date('2020-01-01'), new Date('2020-01-01'));
+  assert.equal(countJunitReports(repo, new Date('2021-01-01')), 12);
+  assert.equal(countJunitReports(fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-junit-'))), null);
+});
+
+test('countWarnings counts maven and compiler warnings', () => {
+  assert.equal(countWarnings('[INFO] ok\n[WARNING] deprecated\nsrc/a.java:3: warning: [unchecked]\nw: kotlin thing\n'), 3);
+});
+
+test('fewer tests than round 0 is a soft finding, unknown counts are skipped', () => {
+  const at = (b, c) => find(evaluate({ baseline: metrics({ test: { ok: true, failing: 0, total: b } }), current: metrics({ test: { ok: true, failing: 0, total: c } }), config: cfg() }), 'test-count');
+  assert.deepEqual([at(10, 9).pass, at(10, 9).delta], [false, -1]);
+  assert.equal(at(10, 11).pass, true);
+  assert.equal(at(undefined, 5), undefined);
+  assert.equal(at(10, null).value, 'missing');
+});
+
+test('more build warnings than round 0 is a soft finding', () => {
+  const r = evaluate({ baseline: metrics({ build: { ok: true, warnings: 2 } }), current: metrics({ build: { ok: true, warnings: 3 } }), config: cfg() });
+  assert.deepEqual([find(r, 'build-warnings').pass, find(r, 'build-warnings').delta], [false, 1]);
+  assert.equal(r.pass, true);
+});
+
+test('page-bytes names the route view that changed most', () => {
+  const r = evaluate({
+    baseline: metrics({ routes: [rr({ bytes: 10000 }), rr({ route: '/b', bytes: 50000 })] }),
+    current: metrics({ routes: [rr({ bytes: 11024 }), rr({ route: '/b', bytes: 40000 })] }),
+    config: cfg(),
+  });
+  assert.equal(find(r, 'page-bytes').detail, 'largest change: /b (desktop) -10 kB');
 });

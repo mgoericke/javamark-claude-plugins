@@ -49,8 +49,11 @@ export function computeUsage(repo, { root, now = new Date() } = {}) {
     ...(unpricedModels(sum, config.prices).length ? { unpriced: unpricedModels(sum, config.prices) } : {}),
   });
   const rounds = {};
+  const windows = Object.values(roundWindows(repo, now));
   for (const [n, win] of Object.entries(roundWindows(repo, now))) rounds[n] = pack(sumUsage(entries, win));
-  const result = { at: now.toISOString(), ...pack(sumUsage(entries, { from: since, to: now })), rounds };
+  // the run ends with its last round: the orchestrating session may go on with unrelated work afterwards
+  const until = windows.length ? new Date(Math.max(...windows.map((w) => w.to.getTime()))) : now;
+  const result = { at: now.toISOString(), until: until.toISOString(), ...pack(sumUsage(entries, { from: since, to: until })), rounds };
   fs.writeFileSync(path.join(evolveDir(repo), 'usage.json'), JSON.stringify(result, null, 2) + '\n');
   return result;
 }

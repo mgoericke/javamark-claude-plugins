@@ -13,8 +13,8 @@
 | `mode` | `"invent"` or `"modernize"` | round agent | same as `evolve.json` |
 | `status` | `"shipped"` or `"reverted"` | round agent | |
 | `tidy` | boolean | round agent | `true` for the last round of a block |
-| `title` | non-empty string | round agent | short name of the idea or step |
-| `why` | non-empty string | round agent | why this idea, what the user notices |
+| `title` | non-empty string | round agent | short name of the idea or step, in the user's language |
+| `why` | non-empty string | round agent | why this idea, what the user notices, in the user's language |
 | `compass` | array of strings | round agent | the compass rules the idea serves (may be empty) |
 | `compassCheck` | string | round agent | the agent's own check against the compass, quoted (may be empty, but write it) |
 | `startedAt` | ISO date string | ship (defaults from `start.txt`) | |

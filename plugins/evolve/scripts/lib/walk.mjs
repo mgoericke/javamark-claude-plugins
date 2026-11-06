@@ -68,7 +68,7 @@ export async function walkRoutes(baseUrl, routes, outDir) {
           const redirected = status !== 0 && pathOf(finalUrl) !== pathOf(route);
           let horizontalScroll = false;
           let mainContentTop = null;
-          let controlsAbove = 0;
+          let controlsAbove = null; // both measured on the mobile viewport only
           try {
             horizontalScroll = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
             if (vp.name === 'mobile') {

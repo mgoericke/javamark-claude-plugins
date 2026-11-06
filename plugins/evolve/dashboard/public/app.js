@@ -9,7 +9,8 @@
   };
   var DOT = { shipped: 'ok', reverted: 'reverted', base: 'base', running: 'running' };
   var CHECK_NAMES = {
-    build: 'Build', start: 'Start', smoke: 'Smoke-Test', endpoints: 'Endpunkte', characterisation: 'Tests',
+    setup: 'Setup', build: 'Build', test: 'Fehlschlagende Tests', 'test-count': 'Tests', 'build-warnings': 'Build-Warnungen',
+    start: 'Start', smoke: 'Smoke-Test', endpoints: 'Endpunkte', characterisation: 'Verhalten',
     'lighthouse-perf': 'Lighthouse', 'lighthouse-a11y': 'Barrierefreiheit', cls: 'CLS',
     'main-content-top': 'Hauptinhalt mobil', 'controls-above': 'Bedienelemente oben', 'page-bytes': 'Seitengröße'
   };
@@ -99,7 +100,7 @@
     if (running) live.textContent = 'Runde ' + running.round + ' baut gerade';
     var last = running || rs[rs.length - 1];
     var finished = rs.filter(function (r) { return r.status === 'shipped' || r.status === 'reverted'; }).length;
-    $('#state').textContent = running ? 'läuft' : finished && finished >= run.blocks * run.roundsPerBlock ? 'fertig' : 'pausiert';
+    $('#state').textContent = running ? 'läuft' : finished && finished >= run.blocks * run.roundsPerBlock ? 'fertig' : 'wartet';
     $('#blockinfo').textContent = last && last.block ? 'Block ' + last.block + ' von ' + run.blocks : '';
   }
 
@@ -119,8 +120,8 @@
     root.textContent = '';
     root.appendChild(kpi('Runden', (shipped + reverted) + ' / ' + run.blocks * run.roundsPerBlock, shipped + ' ausgeliefert' + (reverted ? ', ' + reverted + ' zurückgedreht' : '')));
     root.appendChild(kpi('Tokens', u ? fmtTokens(total) : '–', cache != null ? 'davon ' + cache + ' % aus dem Cache' : 'noch nicht gemessen'));
-    root.appendChild(kpi('Kosten', u && u.cost != null ? '≈ ' + new Intl.NumberFormat('de-DE', { maximumFractionDigits: u.cost < 10 ? 2 : 0 }).format(u.cost) + ' $ (Schätzung)' : '–',
-      u && u.unpriced && u.unpriced.length ? 'ohne Preis: ' + u.unpriced.join(', ') : 'Listenpreise in USD, anpassbar'));
+    root.appendChild(kpi('Kosten', u && u.cost != null ? '≈ ' + new Intl.NumberFormat('de-DE', { maximumFractionDigits: u.cost < 10 ? 2 : 0 }).format(u.cost) + ' $' : '–',
+      'Schätzung' + (u && u.unpriced && u.unpriced.length ? ', ohne Preis: ' + u.unpriced.join(', ') : ', Listenpreise in USD, anpassbar')));
     root.appendChild(kpi('Lighthouse', latest ? String(latest.lighthouse) : '–',
       base ? 'Runde 0: ' + base.lighthouse + ', Grenze ' + (base.lighthouse - lighthouseDrop()) : 'Runde 0 noch nicht gemessen'));
     root.appendChild(modelsKpi(u));
@@ -175,7 +176,7 @@
     var v = c.value, d = c.delta;
     if (v === 'ok') v = '✓'; else if (v === 'failed') v = '✗';
     else if (typeof v === 'number') {
-      if (c.name === 'main-content-top' || c.name === 'controls-above') v = nf.format(v) + ' px';
+      if (c.name === 'main-content-top') v = nf.format(v) + ' px';
       else if (c.name === 'page-bytes') { v = Math.round(v / 1024) + ' kB'; d = typeof d === 'number' ? Math.round(d / 1024) : d; }
       else v = nf.format(v);
     }
