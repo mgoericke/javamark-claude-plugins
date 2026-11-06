@@ -6,7 +6,7 @@
 | Author of decisions | Mark Göricke (GitHub `mgoericke`, "javamark") |
 | Written by | Claude, from Mark's brainstorming session (2026-11-02) |
 | Sources read | `mgoericke/javamark-claude-plugins` @ `bd63ca5` (`main`, 2026-11-06), `mgoericke/claude-mods` @ `6aea352`, the Claude Code publish docs and the directory pre-submission checklist (fetched 2026-11-02) |
-| Revisions | 2026-11-06: Mark reworked javamark-claude-plugins (PRs #3–#10) and decided **`evolve` and `quarkus-toolkit` join the new marketplace**; `token-budget` now lives inside `quarkus-toolkit`. Doc updated accordingly. |
+| Revisions | 2026-11-06 (2): Mark settled author name, evolve's wave and evolve's cost display (§0 questions 8, 10, 11). 2026-11-06 (1): Mark reworked javamark-claude-plugins (PRs #3–#10) and decided **`evolve` and `quarkus-toolkit` join the new marketplace**; `token-budget` now lives inside `quarkus-toolkit`. Doc updated accordingly. |
 | Final home | `~/Projekte/javamark-plugins/docs/superpowers/specs/` — the copy there is the source of truth; this branch only carries the doc. File date = planned approval date |
 
 **How to read the markers.** Everything without a marker is **Mark's decision**. Two other kinds of statement are marked:
@@ -29,10 +29,10 @@ These are the questions only you can answer. Each one blocks or changes a part o
 5. **Confirm the four [Proposed] names**, knowing a new fact from the checklist (§3): a name that "matches a known brand" is *held for a human reviewer* (not blocked). `spring-…`, `jpa-…` and `java-…` all contain a third-party trademark (Spring/Broadcom, Jakarta EE/Eclipse, Java/Oracle), so the `java-` prefix is **not** obviously safer than `spring-`. All of these only matter at submission time; `jpa-entity-explorer` is the one in wave 1. Options for entity-picker: keep `entity-picker` (no brand, no hold, slightly less obvious), or `jpa-entity-explorer` (clear, likely a reviewer hold). [Claude's call, pending your answer: keep **`entity-picker`** for wave 1 and use `displayName: "Entity Picker for JPA"`; take the Spring names for wave 2 and accept the possible hold.] `quarkus-toolkit` has the same issue (Quarkus is a trademark) and is already published under that name in the old marketplace; keeping it is my default [Claude's call]. **All nine names, wave 2 included, must be final before the repo goes public** (§6 step 7), because the team installs them from then on. → §5.
 6. **Version numbering in the new marketplace.** Since 2026-11-06 the skill plugins carry real, meaningful versions (`wiki-llm` 2.0.1 with an "Upgrading from 1.x" section, `quarkus-toolkit` 1.0.0, `evolve` 0.1.0). Resetting them would be confusing. [Claude's call, pending your answer: **carry every current version over unchanged** (mods 0.1.x too) and bump normally from there; each mod goes to `1.0.0` in the PR that prepares its directory submission. The version-bump CI check (§7) runs from the first PR.] → §4, §7.
 7. **Which plan/account submits?** Submission needs a paid claude.ai plan; on Pro/Max/Ultra it's your personal account; on Team/Enterprise only an Owner (or someone with the *Directory* permission) can submit. Submit from your **personal** account so the listing shows "Mark Göricke" and not your employer? [Claude's call, pending your answer: personal account.] → §8.
-8. **`author` name.** The email is settled: the old marketplace now uses `mark@javamark.de`, so the new one uses it too. Still open: `author.name` `"Mark Göricke"` (with `ö`, Latin script — allowed) or `"Mark Goericke"`? Today every `plugin.json` says just `"Mark"`. [Claude's call, pending your answer: `"Mark Göricke"`, plus `email` and `url` to GitHub.] → §4.
+8. ~~`author` name~~ — **Decided by Mark (2026-11-06):** `"Mark Göricke"`, with `email: mark@javamark.de` and `url` to GitHub. → §4.
 9. **Is `claude-mods` actually public right now?** Its README says private, and an unauthenticated `git clone` failed during this session. If it is private, nothing changes in the plan, but the "keep history" question (2) becomes more sensitive, because that history has never been public before. The builder needs authenticated read access to it either way.
-10. **Cost display in `evolve`.** `evolve`'s dashboard shows an estimated token cost in USD from an editable price table — the kind of feature you removed from `cockpit`/`token-lens`. Keep it in `evolve`? [Claude's call, pending your answer: keep it — it is an estimate inside an experiment tool, not a usage meter, and it is clearly labelled as such; but say so if consistency matters more to you.] → §5.10.
-11. **Waves for the two new plugins.** [Claude's call, pending your answer: both **wave 2**. `quarkus-toolkit` is a merge from 2026-11-06 with no tests; `evolve` is 0.1.0, installs Playwright/Chromium via npm at runtime and ships a minified CSS file, each of which will be held for a reviewer (§5.10). Wave 1 stays at four plugins.] If `evolve` is meant to be the showcase, it could replace one wave-1 plugin instead. → §5.9, §5.10.
+10. ~~Cost display in `evolve`~~ — **Decided by Mark (2026-11-06): keep it** in `evolve` (estimated USD cost from the editable price table). The no-cost rule applies to `token-lens` only. → §5.10.
+11. **Waves for the two new plugins.** `evolve`: **decided by Mark (2026-11-06): wave 2.** `quarkus-toolkit`: still open — [Claude's call, pending your answer: wave 2 as well; it is a merge from 2026-11-06 with no tests yet.] → §5.9.
 12. **CI auth.** `claude plugin validate` and `claude plugin test` run in GitHub Actions. If either needs a logged-in Claude account (to be checked by the builder, §7), are you OK with storing an API key as a repo secret, or should CI run only what works without auth?
 
 ---
@@ -74,7 +74,7 @@ The guiding principle is **fewer, but well-made plugins**. The repo, the directo
 
 - Publish a plugin under a name that will need to change later. Names are permanent once published (`name@marketplace` is the install key).
 - Ship anything in German that a user reads (READMEs, descriptions, UI labels, messages), or any example that reveals a work project or customer domain. Undocumented German *input* aliases (keywords and command aliases Mark's team already types) are allowed [Claude's call]; they are never shown in READMEs or UI.
-- Keep the cost/euro/price-table features in the cockpit successor.
+- Keep the cost/euro/price-table features in the cockpit successor (`token-lens`). This does not apply to `evolve`, which keeps its cost estimate (Mark, 2026-11-06).
 - Carry over the dropped plugins "just in case".
 - Delete `claude-mods` before the team has switched.
 
@@ -295,7 +295,7 @@ No longer a separate plugin: since 2026-11-06 (#9) it is a skill inside `quarkus
   - Templates target LangChain4j 1.21 (README): keep that statement; no upgrade in scope.
 - **History:** import with the history of all three predecessor folders (`plugins/java-scaffold/`, `plugins/openapi-toolkit/`, `plugins/token-budget/`) plus `plugins/quarkus-toolkit/` (§6 step 4).
 
-### 5.10 `evolve` — wave 2 [Claude's call on the wave, open question 11]
+### 5.10 `evolve` — wave 2 (Mark's decision)
 
 - **Source:** `javamark-claude-plugins/plugins/evolve` @ 0.1.0 (#4, #5, 2026-11-06). Iteration lab: Claude develops a repo further in rounds on a local `evolve/<run>` branch, with guardrails, one commit + tag per round, and a local dashboard. 60 files: command `/evolve`, skill, 5 references, `scripts/*.mjs` (Node ≥ 20) with 12 test files, `dashboard/` (Node HTTP server on `127.0.0.1`, vendored Basecoat CSS and Geist fonts with their licenses, 3 test files), `docs/*.html` (flow and dashboard mock). Design spec and plan in `docs/superpowers/` of the old repo; screenshot `docs/assets/evolve-dashboard.png`. English.
 - **Name:** unchanged. `displayName: "evolve"` or "Evolve" (builder's choice). Generic-word risk: "evolve" alone might be read as a generic name; no hold expected because it is not one of the listed reserved words, but log it.
@@ -306,7 +306,7 @@ No longer a separate plugin: since 2026-11-06 (#9) it is a skill inside `quarkus
   - **Pin dependencies exactly** (blocking rule for launchers): `scripts/package.json` uses `^` ranges for `playwright`, `pixelmatch`, `pngjs`, `lighthouse`; `deps.mjs` runs `npm install` and `npx playwright install chromium`. Pin exact versions and commit a lockfile *inside `scripts/`* (not at the plugin root, which would trigger the "Dependencies install from a lockfile" hold), and use `npm ci` [Claude's call]. A reviewer hold for the runtime install remains and is accepted.
   - **Minified CSS**: `dashboard/public/vendor/basecoat.cdn.min.css` (231 KiB) will be held as unreadable code. Options: ship the unminified Basecoat source if it stays < 256 KiB, or reduce it to the classes the dashboard uses [Claude's call: the latter, builder decides after measuring].
   - **Disclosure** in a "What it reads, writes and runs" README section: installs npm packages and Chromium into `~/.cache/evolve/<version>/`; runs the target project's build, tests and app; starts a dashboard on `127.0.0.1` only; **reads Claude Code session transcripts under `~/.claude/projects/`** to estimate token usage (`scripts/lib/usage.mjs`) — this is the item the security scan will care about most; creates branches, commits and tags but never pushes, merges or deletes branches; optional Lighthouse runs locally.
-  - Cost display: see §0 question 10.
+  - Cost display: **stays** (Mark's decision, 2026-11-06). The README calls it an estimate and names where the price table lives (`evolve.json`).
   - Tests: `node --test` for `scripts/test/` and `dashboard/test/` join CI (§7); the UI test may need Playwright in CI — builder checks and, if needed, runs it as a separate job.
 
 ### Dropped (not migrated)
