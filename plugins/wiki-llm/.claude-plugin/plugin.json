@@ -1,6 +1,6 @@
 {
   "name": "wiki-llm",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "An Obsidian knowledge base that Claude writes and you read: sources become linked pages, plain Markdown, no database. Follows Karpathy's LLM wiki idea.",
   "author": {
     "name": "Mark"
