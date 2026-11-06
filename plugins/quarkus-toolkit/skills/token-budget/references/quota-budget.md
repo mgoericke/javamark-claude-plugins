@@ -175,17 +175,17 @@ public class PriorityLlmScheduler {
      */
     public CompletionStage<RateLimitPermit> acquire(String service, int estimatedTokens, Priority priority) {
         if (priority == Priority.SAFETY_GATE) {
-            return CompletableFuture.completedFuture(RateLimitPermit.unlimited());
+            return CompletableFuture.completedFuture(RateLimitPermit.noLimit());
         }
 
         var result = rateLimiter.tryAcquire(service, estimatedTokens);
         if (result.permitted()) {
-            return CompletableFuture.completedFuture(RateLimitPermit.granted());
+            return CompletableFuture.completedFuture(RateLimitPermit.grant());
         }
 
         // Queue the request and retry after the suggested wait time.
         // Uses Mutiny to avoid blocking a thread from the pool.
-        return Uni.createFrom().item(RateLimitPermit.granted())
+        return Uni.createFrom().item(RateLimitPermit.grant())
             .onItem().delayIt().by(result.retryAfter())
             .subscribeAsCompletionStage();
     }
@@ -265,8 +265,8 @@ public record RateLimitStatus(long tokensUsed, long tokenLimit, long tokensRemai
 }
 
 public record RateLimitPermit(boolean granted, boolean unlimited) {
-    public static RateLimitPermit granted() { return new RateLimitPermit(true, false); }
-    public static RateLimitPermit unlimited() { return new RateLimitPermit(true, true); }
+    public static RateLimitPermit grant() { return new RateLimitPermit(true, false); }
+    public static RateLimitPermit noLimit() { return new RateLimitPermit(true, true); }
 }
 ```
 

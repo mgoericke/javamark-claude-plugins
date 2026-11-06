@@ -37,3 +37,14 @@ Generated code always includes:
 2. Matching `application.properties` configuration
 3. Maven dependencies as a `<dependency>` block
 4. Notes on required Dev Services or Ollama models
+
+## AI Services
+When the feature contains a LangChain4j AI service, ask once whether it needs a token budget:
+
+| Budget | Protects | Adds |
+|---|---|---|
+| Context | Quality: what fits into the context window | A service and an estimator |
+| Cost | Money: tokens per month, with alerts | Tracking, REST endpoints, a Flyway migration |
+| Quota | Rate: requests and tokens per minute | Rate limiter, priority queue, Prometheus metrics |
+
+If the answer is yes, follow the `token-budget` skill. If no, generate nothing for it.
