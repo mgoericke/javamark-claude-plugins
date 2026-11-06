@@ -26,7 +26,7 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 | `.evolve/rounds/rNNN/` | `start.txt`, `scan.json`, `metrics.json`, `guardrails.json`, `shots/`, `summary.json`, `diffs.json`, `diff/` |
 | `.evolve/characterisation/` | modernize: recorded behaviour |
 | `.evolve/usage.json` | token usage per round, written by `usage.mjs` |
-| `.evolve/local/` | never committed: `dashboard.log`, `logs/app-rNNN.log` (dashboard apps), `logs/scan-rNNN.log` (scan), scratch summaries |
+| `.evolve/local/` | never committed: `dashboard.log`, `logs/build-rNNN.log` (setup, build and test output of each check), `logs/app-rNNN.log` (dashboard apps), `logs/scan-rNNN.log` (scan), scratch summaries |
 | `.evolve/worktrees/` | never committed: one git worktree per round for the dashboard |
 
 `.evolve/local/` and `.evolve/worktrees/` are gitignored by `init.mjs`; they do not count as a dirty tree.
@@ -35,8 +35,8 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 
 | Script | Usage |
 |---|---|
-| `init.mjs` | `<repo> --run <name> --mode <invent\|modernize>`: checks the tree is clean, creates branch `evolve/<name>`, writes `evolve.json` with detected stack and a run marker, commits `evolve: start run <name>`, prints the marker as its last line |
-| `check.mjs` | `<repo> --baseline`: round 0, records known issues, commits `evolve: baseline`. `<repo> --start N`: records start commit and time (refuses a dirty tree). `<repo> --round N`: setup (once), build, test, start, smoke, metrics, guardrails; exit 0 = pass, exit 1 = a hard guardrail failed. `<repo> --record-characterisation`: modernize |
+| `init.mjs` | `<repo> --run <name> --mode <invent\|modernize>`: checks the tree is clean, creates branch `evolve/<name>`, writes `evolve.json` with detected stack (npm, static, Maven/Gradle with Quarkus or Spring Boot; a JVM project with templates or static resources is `web`) and a run marker, commits `evolve: start run <name>`, prints the marker as its last line |
+| `check.mjs` | `<repo> --baseline`: round 0, records known issues, commits `evolve: baseline`. `<repo> --start N`: records start commit and time (refuses a dirty tree), prints a confirmation and the run marker; `rounds/rNNN/` stays untracked until ship. `<repo> --round N`: setup (once), build, test, start, smoke, metrics, guardrails; exit 0 = pass, exit 1 = a hard guardrail failed. `<repo> --record-characterisation`: modernize |
 | `scan.mjs` | `<repo> --round N`: walks the routes (desktop and 390 px), lists endpoints, writes `rounds/rNNN/scan.json` |
 | `ship.mjs` | `<repo> --round N --summary <file>`: ships or reverts the round (see Ship) |
 | `usage.mjs` | `<repo>`: finds the transcripts, writes `usage.json`, prints a one-line total |
@@ -62,14 +62,15 @@ Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>
 | `thresholds` | `lighthousePerf -5`, `lighthouseA11y -5`, `cls 0.05` | allowed change against round 0 |
 | `characterisation.ignore` | `[]` | JSON keys ignored when comparing recorded responses (ids, timestamps) |
 | `knownIssues` | filled by `--baseline` | console errors, horizontal scroll routes, failing test count of round 0 |
-| `prices` | built-in table | USD per million tokens per model; editable |
+| `routes` (later) | | a round that changes a page not yet in `routes` adds it before its check; relative checks for that route start with that round |
+| `prices` | built-in table | USD per million tokens per model; editable. Dated model ids (`…-20251001`) use the undated entry |
 
 ## Start
 
 1. Check the tree. If the directory is not a git repo, or the tree is dirty, stop and ask the user.
-2. Interview with `references/compass-interview.md`. Detect first, ask only for the rest. Settle: target, mode, rounds per block, blocks, compass, and for modernize the target stack.
+2. Interview with `references/compass-interview.md`. Detect first, ask only for the rest. Settle: target, mode, rounds per block, blocks, compass, and for modernize the target stack. The detected start command is a guess: confirm it, and that it takes the port (`{port}` or `PORT`).
 3. `init.mjs <repo> --run <name> --mode <mode>`. Run name: short, letters, digits, `.`, `_`, `-`.
-4. **Show the run marker** (the last line printed by init, `evolve-run:<name>:<hex>`) in your reply as plain text. Usage is found through it. Tell the user: do not paste the marker into other sessions. A transcript that merely quotes the marker is counted too, and unrelated usage would be added.
+4. **Show the run marker** (the last line printed by init, `evolve-run:<name>:<hex>`) in your reply. Usage is found through it: a session counts when an evolve script printed the marker into one of its tool results (`init`, `scan`, `check --start` print it). Sessions that only quote it (a pasted message, a memory observer) do not count.
 5. Edit `.evolve/evolve.json` with the interview results (commands, `routes`, `endpoints`, `roundsPerBlock`, `blocks`, thresholds). Write `.evolve/COMPASS.md`. Do not commit yet.
 6. `check.mjs <repo> --baseline`. It first installs dependencies if needed (slow on the first run), then builds, tests, starts the app, walks the routes, takes screenshots and metrics, records the known issues, and commits `evolve: baseline` (including `evolve.json` and `COMPASS.md`).
    - If it reports `evolve needs a running baseline` (build or start failed), **stop**. Show the output, say that evolve needs a baseline that builds and starts, and ask the user to fix it. Run `--baseline` again afterwards.
@@ -82,13 +83,13 @@ Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>
 
 Setup: read `.evolve/evolve.json`, `.evolve/COMPASS.md`. Check the tree is clean (else stop and ask). Find the block: the highest round number with a `summary.json`, counted in
 rounds of `roundsPerBlock`. If all `blocks` are done, say so and suggest `/evolve review`. Block `B` covers rounds `(B-1)*roundsPerBlock+1` to `B*roundsPerBlock`.
-Show the run marker from `evolve.json` again in your reply (same warning as in Start). Start the dashboard if it is not running (see Board).
+Start the dashboard if it is not running (see Board).
 
 **Scan.** Scanning may use a cheaper model. Run `scan.mjs <repo> --round F` with `F` the first round of the block. The script commits its own files as `evolve: scan rNNN`, so the tree stays clean. Read `scan.json` and add what the code shows: README, CLAUDE.md, git history, which backend data the UI does not use.
 
-**Rounds.** For each round `N` of the block, in order, start **one subagent** (fresh context). Give it: the compass (`COMPASS.md`), the tail of `CHANGELOG.md` (last ~10 entries),
-the latest `scan.json` (highest-numbered `rounds/r*/scan.json`), the round number `N`, the block number, whether the round is the **tidy-up round** (the last of the block),
-the repo path and `${CLAUDE_PLUGIN_ROOT}`, and the instruction to follow "One round" below and `references/idea-rules.md` and `references/round-summary-schema.md`.
+**Rounds.** For each round `N` of the block, in order, start **one subagent** (fresh context). Give it the path of `references/round-agent.md`
+(read first, it holds every rule a round needs), `references/idea-rules.md` and `references/round-summary-schema.md`, the repo path,
+`${CLAUDE_PLUGIN_ROOT}`, the round number `N`, the block number and whether the round is the **tidy-up round** (the last of the block).
 Rounds run one after another, never in parallel.
 
 After each round subagent returns, the main session reads `.evolve/rounds/rNNN/summary.json`:
@@ -97,13 +98,13 @@ After each round subagent returns, the main session reads `.evolve/rounds/rNNN/s
 - `status: shipped`: note title and guardrail result, continue.
 
 **After the block.**
-1. `usage.mjs <repo>`. The script commits `usage.json` and `evolve.json` itself as `evolve: usage`.
-2. Write the block summary: what shipped (titles), the best ideas, the metric trend against round 0 (Lighthouse, CLS, `mainContentTop`, `controlsAbove` from each `metrics.json` and `guardrails.json`), reverted rounds with reasons, tokens per model and the cost. Cost is always shown as "≈ … (estimate)", never as a fact; prices are editable in `evolve.json`. Models without a price are listed as unpriced.
+1. `usage.mjs <repo>`. The script commits `usage.json` and `evolve.json` itself as `evolve: usage`. The total includes this orchestrating session from the run's start; the per-round numbers cover the round windows only.
+2. Write the block summary: what shipped (titles), the best ideas, the metric trend against round 0 (Lighthouse, CLS, `mainContentTop`, `controlsAbove`, test count, build warnings from each `metrics.json` and `guardrails.json`), reverted rounds with reasons, tokens per model and the cost. Cost is always shown as "≈ … (estimate)", never as a fact; prices are editable in `evolve.json`. Models without a price are listed as unpriced.
 3. Offer exactly three choices: **continue** (next block), **change the compass** (edit `COMPASS.md` with the user, commit it, then continue), **stop**.
 
 ## One round
 
-The round subagent works in the repo on branch `evolve/<run>`.
+The round subagent works in the repo on branch `evolve/<run>`. `references/round-agent.md` is the same protocol written for the subagent; keep both in step.
 
 1. **Start.** `check.mjs <repo> --start N`. If it refuses (dirty tree), stop and report.
 2. **Read** the compass, the changelog tail and the latest scan.
@@ -129,7 +130,7 @@ For `status: "reverted"` ship itself resets the branch to the round's start comm
 
 ### Tidy-up round (last round of each block)
 
-No new feature. Reduce clutter and quality debt measured since the block started: soft guardrails that got worse (`main-content-top`, `controls-above`, `page-bytes`), duplicated or unneeded UI, dead code, build warnings.
+No new feature. Reduce clutter and quality debt measured since the block started: compare the last round's metrics with the round before the block, soft guardrails that got worse (`main-content-top`, `controls-above`, `page-bytes`, `test-count`, `build-warnings`), duplicated or unneeded UI, dead code, warnings in `.evolve/local/logs/build-rNNN.log`.
 Set `tidy: true`. Hard guardrails apply as always. The rule "no polish-only rounds" does not apply here.
 
 ## Modernize mode

@@ -9,6 +9,8 @@ rounds drifted, features piled up, and decluttering cost days. The rules below a
    If you have to explain why it matters, it is not bold enough.
 2. **Prefer unused backend data.** Read the latest `scan.json` (routes, endpoints) and the code. Data the
    backend serves but the UI does not use is the first place to look. A new endpoint is allowed when the UI needs it.
+   A server-rendered app usually shows 0 endpoints in the scan: then read the page models and templates instead
+   (`round-agent.md`, "Finding the idea").
 3. **Not done yet.** Check the CHANGELOG tail. Do not redo, rename or restyle an earlier idea.
 4. **Real data only.** Never invent data, testimonials, reviews or user numbers. If an idea needs data that does not exist, pick another idea.
 
