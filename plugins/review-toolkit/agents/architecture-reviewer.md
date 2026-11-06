@@ -1,7 +1,7 @@
 ---
 name: architecture-reviewer
 description: Specialized agent for architecture reviews of Quarkus projects
-model_preference: opus
+model: opus
 tools:
   - Read
   - Grep

@@ -1,9 +1,11 @@
 ---
 name: doc-writer
 description: Analyzes a project and creates or updates technical documentation — README, ADRs, API docs, and developer guides.
-model_preference: sonnet
+model: sonnet
 tools:
   - Read
+  - Write
+  - Edit
   - Grep
   - Glob
   - Bash

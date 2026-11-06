@@ -1,7 +1,7 @@
 ---
 name: performance-reviewer
 description: Specialized agent for performance reviews — N+1 queries, memory leaks, embedding performance, database queries, and reactive patterns in Quarkus projects.
-model_preference: opus
+model: opus
 tools:
   - Read
   - Grep
