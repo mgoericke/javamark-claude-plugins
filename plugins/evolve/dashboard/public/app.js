@@ -431,10 +431,16 @@
       });
     }).catch(function (e) {
       if (!st.run) { $('#main').textContent = ''; $('#main').appendChild(h('p', { cls: 'state', text: 'Der Server antwortet nicht (' + e.message + '). Neuer Versuch in 5 s …' })); }
-    }).then(function () {
-      if (!st.run || st.run.state === 'running') timer = setTimeout(refresh, 5000);
-    });
+    }).then(schedule);
   }
+
+  // always poll: every 5 s while running (or not loaded yet), every 15 s otherwise; hidden tabs skip the fetch
+  function schedule() {
+    clearTimeout(timer);
+    var fast = !st.run || st.run.state === 'running';
+    timer = setTimeout(function () { if (document.hidden) schedule(); else refresh(); }, fast ? 5000 : 15000);
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
 
   document.addEventListener('click', function (e) {
     var t;

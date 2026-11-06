@@ -159,3 +159,22 @@ test('a backend run shows endpoints and never starts a preview', { skip }, async
     cleanup(b.repo);
   }
 });
+
+test('an idle run keeps polling (every 15 s)', { skip }, async () => {
+  const idle = makeRepo();
+  fs.rmSync(idle.rd(4), { recursive: true, force: true }); // no running round -> state idle
+  const s = await createServer({ repo: idle.repo, port: 0 });
+  const page = await browser.newPage();
+  try {
+    let calls = 0;
+    page.on('request', (r) => { if (new URL(r.url()).pathname === '/api/run') calls++; });
+    await page.clock.install();
+    await page.goto(s.url);
+    await page.waitForSelector('#rounds .round');
+    assert.equal(await page.evaluate(() => fetch('/api/run').then((r) => r.json()).then((j) => j.state)), 'idle');
+    const before = calls;
+    await page.clock.runFor(16000);
+    await page.waitForTimeout(300);
+    assert.ok(calls > before, `expected another poll, calls ${before} -> ${calls}`);
+  } finally { await page.close(); await s.close(); cleanup(idle.repo); }
+});
