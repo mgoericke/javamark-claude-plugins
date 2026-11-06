@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig, writeConfig, roundDir, evolveDir } from './lib/config.mjs';
-import { startApp, freePort } from './lib/app.mjs';
+import { startApp, freePort, killAppsOnSignal } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { importDep, ensureDeps } from './lib/deps.mjs';
 import { head, isClean, dirtyPaths } from './lib/git.mjs';
@@ -54,7 +54,12 @@ async function runLighthouse(url) {
 
 export async function collect(repo, config, outDir) {
   const notes = [];
-  const m = { build: { ok: true }, test: { ok: true, failing: 0 }, start: { ok: false }, routes: [], endpoints: [] };
+  const m = { setup: { ok: true }, build: { ok: true }, test: { ok: true, failing: 0 }, start: { ok: false }, routes: [], endpoints: [] };
+  if (config.app.setup) {
+    // once, before build and test; startApp then skips it
+    const r = runCommand(config.app.setup.replaceAll('{port}', String(await freePort())), repo, config.commandTimeoutMs);
+    m.setup = r.ok ? { ok: true } : { ok: false, detail: r.timedOut ? `setup timed out after ${Math.round(config.commandTimeoutMs / 1000)} s` : `setup failed (exit ${r.status})\n${`${r.stdout ?? ''}${r.stderr ?? ''}`.trim().split('\n').slice(-5).join('\n')}` };
+  }
   if (config.app.build) {
     m.build = { ok: runCommand(config.app.build, repo, config.commandTimeoutMs).ok };
   }
@@ -64,7 +69,7 @@ export async function collect(repo, config, outDir) {
   }
   let handle;
   try {
-    handle = await startApp(config.app, { cwd: repo });
+    handle = await startApp(config.app, { cwd: repo, skipSetup: true });
     m.start = { ok: true };
   } catch (e) { m.start = { ok: false, detail: String(e.message ?? e).split('\n').slice(0, 5).join('\n') }; }
   if (handle) {
@@ -87,6 +92,7 @@ async function main(args) {
   const val = (flag) => { const i = args.indexOf(flag); return i >= 0 ? Number(args[i + 1]) : undefined; };
   const repo = path.resolve(args.find((a) => !a.startsWith('--') && !/^\d+$/.test(a)) ?? '.');
   const config = readConfig(repo);
+  killAppsOnSignal();
 
   // test-only: skip dependency install (EVOLVE_SKIP_DEPS)
   // first baseline installs Playwright (and Lighthouse) into ~/.cache/evolve; tests skip it
@@ -102,7 +108,7 @@ async function main(args) {
   }
 
   if (args.includes('--record-characterisation')) {
-    const h = await startApp(config.app, { cwd: repo });
+    const h = await startApp(config.app, { cwd: repo, setupTimeoutMs: config.commandTimeoutMs });
     try {
       const snap = await recordCharacterisation(h.url, config, charDir(repo));
       console.log(`recorded ${snap.endpoints.length} endpoint(s) and ${snap.routes.length} route(s) in ${charDir(repo)}`);
@@ -122,8 +128,8 @@ async function main(args) {
   let baseline;
   let cfg = config;
   if (isBaseline) {
-    if (!metrics.build.ok || !metrics.start.ok) {
-      console.error(`evolve needs a running baseline: ${!metrics.build.ok ? 'build failed' : `start failed${metrics.start.detail ? `\n${metrics.start.detail}` : ''}`}`);
+    if (!metrics.setup.ok || !metrics.build.ok || !metrics.start.ok) {
+      console.error(`evolve needs a running baseline: ${!metrics.setup.ok ? metrics.setup.detail : !metrics.build.ok ? 'build failed' : `start failed${metrics.start.detail ? `\n${metrics.start.detail}` : ''}`}`);
       return 1;
     }
     cfg = {

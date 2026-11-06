@@ -128,3 +128,30 @@ test('startApp serves a static directory', async () => {
   await assert.rejects(fetch(h.url));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+const srv = `node -e "require('http').createServer((q,s)=>s.end('ok')).listen(process.env.PORT)"`;
+
+test('startApp skips setup with skipSetup', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-app-'));
+  const h = await startApp({ kind: 'web', setup: 'touch setup-ran', start: srv, url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 10000 }, { cwd: dir, skipSetup: true });
+  await h.stop();
+  assert.ok(!fs.existsSync(path.join(dir, 'setup-ran')));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
+test('startApp kills a hanging setup after setupTimeoutMs', async () => {
+  const app = { kind: 'web', setup: 'sleep 5', start: 'true', url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 1000 };
+  const t = Date.now();
+  await assert.rejects(startApp(app, { cwd, setupTimeoutMs: 300 }), /setup timed out/);
+  assert.ok(Date.now() - t < 4000);
+});
+
+test('the handle exposes pid and kill() SIGKILLs the process group synchronously', async () => {
+  const h = await startApp({ kind: 'web', start: srv, url: 'http://127.0.0.1:{port}/', readyTimeoutMs: 10000 }, { cwd });
+  assert.ok(Number.isInteger(h.pid) && alive(h.pid));
+  h.kill();
+  const deadline = Date.now() + 3000;
+  while (alive(h.pid) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+  assert.equal(alive(h.pid), false);
+  await h.stop();
+});

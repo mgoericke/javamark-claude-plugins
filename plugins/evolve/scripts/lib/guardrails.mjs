@@ -64,6 +64,7 @@ function maxIncrease(baseline, current, field) {
 export function evaluate({ baseline, current, config }) {
   const hard = [];
   const soft = [];
+  if (current.setup) hard.push({ name: 'setup', pass: !!current.setup.ok, value: current.setup.ok ? 'ok' : 'failed', ...(current.setup.detail ? { detail: current.setup.detail } : {}) });
   hard.push({ name: 'build', pass: !!current.build.ok, value: current.build.ok ? 'ok' : 'failed' });
   hard.push({
     name: 'test', pass: current.test.failing <= baseline.test.failing, value: current.test.failing, baseline: baseline.test.failing,

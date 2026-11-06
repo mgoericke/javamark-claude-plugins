@@ -55,3 +55,18 @@ test('never more than max apps run at once, even with concurrent ensures', async
     assert.equal(await body(b.url), 'round-2');
   } finally { await pool.stopAll(); cleanup(repo); }
 });
+
+test('killAll SIGKILLs running apps synchronously', async () => {
+  const { repo, config } = makeRepo();
+  const pool = createPool({ repo, config });
+  try {
+    const a = await pool.ensure(1);
+    assert.equal((await fetch(a.url)).status, 200);
+    pool.killAll();
+    const deadline = Date.now() + 3000;
+    let down = false;
+    while (!down && Date.now() < deadline) { down = await fetch(a.url).then(() => false, () => true); if (!down) await new Promise((r) => setTimeout(r, 50)); }
+    assert.ok(down);
+    await assert.rejects(pool.ensure(1), /stopped/);
+  } finally { await pool.stopAll(); cleanup(repo); }
+});

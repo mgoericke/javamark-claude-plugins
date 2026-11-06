@@ -37,6 +37,23 @@ async function answers(url) {
   } catch { return false; }
 }
 
+// process groups of every app this process started and has not stopped yet
+const live = new Set();
+let exitHooked = false;
+
+// synchronous: SIGKILL every live app's process group (used on exit and on fatal signals)
+export function killAllApps() {
+  for (const pid of live) { try { process.kill(-pid, 'SIGKILL'); } catch {} }
+  live.clear();
+}
+
+// check/scan CLIs: stop the apps they started when interrupted
+export function killAppsOnSignal() {
+  for (const [sig, code] of [['SIGINT', 130], ['SIGTERM', 143], ['SIGHUP', 129]]) {
+    process.on(sig, () => { killAllApps(); process.exit(code); });
+  }
+}
+
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.png': 'image/png',
@@ -66,10 +83,11 @@ async function startStatic(app, { cwd, port }) {
   const srv = staticServer(dir);
   await new Promise((resolve, reject) => { srv.once('error', reject); srv.listen(port, '127.0.0.1', resolve); });
   const stop = () => new Promise((resolve) => { srv.close(() => resolve()); srv.closeAllConnections?.(); });
-  return { url: app.url.replaceAll('{port}', String(port)), port, stop };
+  return { url: app.url.replaceAll('{port}', String(port)), port, pid: undefined, stop, kill() {} };
 }
 
-export async function startApp(app, { cwd, port, log } = {}) {
+// skipSetup: the caller already ran app.setup. Otherwise setup runs here, killed after setupTimeoutMs.
+export async function startApp(app, { cwd, port, log, skipSetup = false, setupTimeoutMs = 1200000 } = {}) {
   port ??= await freePort();
   if (await portInUse(port)) throw new Error(`port ${port} is already in use`);
   if (app.start.startsWith('static:')) return startStatic(app, { cwd, port });
@@ -90,9 +108,13 @@ export async function startApp(app, { cwd, port, log } = {}) {
     while (tail.length > 20) tail.shift();
   };
 
-  if (app.setup) {
-    const r = spawnSync(sub(app.setup), { cwd, env, shell: true, encoding: 'utf8' });
+  if (app.setup && !skipSetup) {
+    const r = spawnSync(sub(app.setup), { cwd, env, shell: true, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, timeout: setupTimeoutMs, killSignal: 'SIGKILL' });
     record(`${r.stdout ?? ''}${r.stderr ?? ''}`);
+    if (r.error?.code === 'ETIMEDOUT') {
+      closeLog();
+      throw new Error(`app setup timed out after ${Math.round(setupTimeoutMs / 1000)} s\n${tail.join('\n')}`);
+    }
     if (r.status !== 0) {
       closeLog();
       throw new Error(`app setup failed (exit ${r.status})\n${tail.join('\n')}`);
@@ -100,6 +122,11 @@ export async function startApp(app, { cwd, port, log } = {}) {
   }
 
   const child = spawn(sub(app.start), { cwd, env, shell: true, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  if (child.pid) {
+    live.add(child.pid);
+    if (!exitHooked) { exitHooked = true; process.on('exit', killAllApps); }
+  }
+  const kill = () => { if (child.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} live.delete(child.pid); } };
   child.stdout.on('data', record);
   child.stderr.on('data', record);
   let exited = false;
@@ -120,6 +147,7 @@ export async function startApp(app, { cwd, port, log } = {}) {
         while (groupAlive(pid)) await sleep(20);
       }
     }
+    if (pid) live.delete(pid);
     await exitP;
     await Promise.race([closeP, sleep(1000)]);
     closeLog();
@@ -128,7 +156,7 @@ export async function startApp(app, { cwd, port, log } = {}) {
   const deadline = Date.now() + (app.readyTimeoutMs ?? 60000);
   while (Date.now() < deadline && !exited) {
     const ok = await answers(url);
-    if (ok && !exited) return { url, port, stop };
+    if (ok && !exited) return { url, port, pid: child.pid, stop, kill };
     if (!exited) await sleep(200);
   }
   const early = exited;

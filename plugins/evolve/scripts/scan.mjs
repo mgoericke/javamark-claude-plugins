@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig, roundDir, evolveDir, pad } from './lib/config.mjs';
-import { startApp } from './lib/app.mjs';
+import { startApp, killAppsOnSignal } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { head, recentSubjects, commitPaths } from './lib/git.mjs';
 
@@ -78,7 +78,7 @@ export async function scan(repo, round) {
   fs.mkdirSync(dir, { recursive: true });
   const logDir = path.join(evolveDir(repo), 'local', 'logs'); // never committed
   fs.mkdirSync(logDir, { recursive: true });
-  const app = await startApp(config.app, { cwd: repo, log: path.join(logDir, `scan-r${pad(round)}.log`) });
+  const app = await startApp(config.app, { cwd: repo, log: path.join(logDir, `scan-r${pad(round)}.log`), setupTimeoutMs: config.commandTimeoutMs });
   try {
     const routes = await walkRoutes(app.url, config.routes, path.join(dir, 'scan-shots'));
     const endpoints = await findEndpoints(repo, app.url);
@@ -100,6 +100,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     console.error('usage: scan.mjs <repo> --round N');
     process.exit(2);
   }
+  killAppsOnSignal();
   scan(path.resolve(repo), round).then(
     (r) => {
       console.log(`scan r${round}: ${r.routes.length} route views, ${r.endpoints.endpoints.length} endpoints`);

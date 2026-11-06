@@ -119,6 +119,7 @@ export async function createServer({ repo, port = 4173 }) {
   return {
     url,
     server,
+    killApps: () => pool.killAll(),
     async close() {
       await pool.stopAll();
       await new Promise((resolve) => { server.close(() => resolve()); server.closeAllConnections?.(); });
@@ -145,4 +146,6 @@ if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(file
   };
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
+  process.on('SIGHUP', shutdown);
+  process.on('exit', () => srv.killApps()); // crash or hard exit: no app keeps its port
 }

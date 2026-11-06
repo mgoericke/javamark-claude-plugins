@@ -54,7 +54,7 @@ export function createPool({ repo, config, max = 2 }) {
     }
     const logDir = path.join(evolveDir(repo), 'local', 'logs');
     fs.mkdirSync(logDir, { recursive: true });
-    const h = await startApp(config.app, { cwd: wt, log: path.join(logDir, `app-r${pad(n)}.log`) });
+    const h = await startApp(config.app, { cwd: wt, log: path.join(logDir, `app-r${pad(n)}.log`), setupTimeoutMs: config.commandTimeoutMs });
     if (closed) { await h.stop(); throw new Error('pool is stopped'); }
     apps.set(n, h);
     return h;
@@ -73,6 +73,12 @@ export function createPool({ repo, config, max = 2 }) {
       }
       const h = await p;
       return { url: h.url };
+    },
+    // synchronous SIGKILL of every app's process group (process exit)
+    killAll() {
+      closed = true;
+      for (const h of apps.values()) h.kill();
+      apps.clear();
     },
     async stopAll() {
       closed = true;

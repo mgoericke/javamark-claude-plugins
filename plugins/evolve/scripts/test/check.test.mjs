@@ -102,3 +102,35 @@ test('--baseline fails and names files the setup left behind', () => {
     assert.equal(spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' }).status, 0);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('collect runs setup once, before build, and the app start does not repeat it', async () => {
+  const { collect } = await import('../check.mjs');
+  const dir = repoWith({ start: server, setup: 'echo s >> order.txt', build: 'echo b >> order.txt', test: 'true' });
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, '.evolve/evolve.json'), 'utf8'));
+    const { metrics } = await collect(dir, applyDefaults({ ...cfg, routes: [], endpoints: [] }), path.join(dir, 'out'));
+    assert.equal(metrics.setup.ok, true);
+    assert.equal(fs.readFileSync(path.join(dir, 'order.txt'), 'utf8'), 's\nb\n');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a failing or hanging setup is reported as the setup result', async () => {
+  const { collect } = await import('../check.mjs');
+  const { evaluate } = await import('../lib/guardrails.mjs');
+  const dir = repoWith({ start: server, setup: 'echo boom >&2; exit 4' });
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, '.evolve/evolve.json'), 'utf8'));
+    const config = applyDefaults({ ...cfg, routes: [], endpoints: [] });
+    const { metrics } = await collect(dir, config, path.join(dir, 'out'));
+    assert.equal(metrics.setup.ok, false);
+    assert.match(metrics.setup.detail, /exit 4[\s\S]*boom/);
+    const res = evaluate({ baseline: { ...metrics, setup: { ok: true }, test: { failing: 0 }, routes: [], endpoints: [] }, current: metrics, config });
+    const c = res.hard.find((x) => x.name === 'setup');
+    assert.equal(c.pass, false);
+    // timeout
+    const slow = applyDefaults({ ...cfg, app: { ...cfg.app, setup: 'sleep 5' }, commandTimeoutMs: 300, routes: [], endpoints: [] });
+    const t = await collect(dir, slow, path.join(dir, 'out2'));
+    assert.equal(t.metrics.setup.ok, false);
+    assert.match(t.metrics.setup.detail, /timed out/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
