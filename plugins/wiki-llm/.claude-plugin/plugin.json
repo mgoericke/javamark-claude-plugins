@@ -1,7 +1,7 @@
 {
   "name": "wiki-llm",
-  "version": "1.0.0",
-  "description": "Personal LLM-powered knowledge base — plain Markdown, Git-versioned, searchable and linkable by Claude Code. Inspired by Karpathy's Wiki-LLM concept.",
+  "version": "2.0.0",
+  "description": "An Obsidian knowledge base that Claude writes and you read: sources become linked pages, plain Markdown, no database. Follows Karpathy's LLM wiki idea.",
   "author": {
     "name": "Mark"
   }
