@@ -119,8 +119,8 @@
     root.textContent = '';
     root.appendChild(kpi('Runden', (shipped + reverted) + ' / ' + run.blocks * run.roundsPerBlock, shipped + ' ausgeliefert' + (reverted ? ', ' + reverted + ' zurückgedreht' : '')));
     root.appendChild(kpi('Tokens', u ? fmtTokens(total) : '–', cache != null ? 'davon ' + cache + ' % aus dem Cache' : 'noch nicht gemessen'));
-    root.appendChild(kpi('Kosten', u && u.cost != null ? '≈ ' + new Intl.NumberFormat('de-DE', { maximumFractionDigits: u.cost < 10 ? 2 : 0 }).format(u.cost) + ' €' : '–',
-      u && u.unpriced && u.unpriced.length ? 'Schätzung, ohne Preis: ' + u.unpriced.join(', ') : 'Schätzung, Preise anpassbar'));
+    root.appendChild(kpi('Kosten', u && u.cost != null ? '≈ ' + new Intl.NumberFormat('de-DE', { maximumFractionDigits: u.cost < 10 ? 2 : 0 }).format(u.cost) + ' $ (Schätzung)' : '–',
+      u && u.unpriced && u.unpriced.length ? 'ohne Preis: ' + u.unpriced.join(', ') : 'Listenpreise in USD, anpassbar'));
     root.appendChild(kpi('Lighthouse', latest ? String(latest.lighthouse) : '–',
       base ? 'Runde 0: ' + base.lighthouse + ', Grenze ' + (base.lighthouse - lighthouseDrop()) : 'Runde 0 noch nicht gemessen'));
     root.appendChild(modelsKpi(u));

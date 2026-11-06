@@ -31,10 +31,12 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 
 `.evolve/local/` and `.evolve/worktrees/` are gitignored by `init.mjs`; they do not count as a dirty tree.
 
+**Long-running commands.** `check.mjs --baseline`, `check.mjs --round N` and `ship.mjs` can take longer than Bash's 2-minute default. Call Bash with `timeout: 600000`, or use `run_in_background` and wait for it to finish; never treat a cut-off as a failed check.
+
 | Script | Usage |
 |---|---|
 | `init.mjs` | `<repo> --run <name> --mode <invent\|modernize>`: checks the tree is clean, creates branch `evolve/<name>`, writes `evolve.json` with detected stack and a run marker, commits `evolve: start run <name>`, prints the marker as its last line |
-| `check.mjs` | `<repo> --baseline`: round 0, records known issues, commits `evolve: baseline`. `<repo> --start N`: records start commit and time (refuses a dirty tree). `<repo> --round N`: build, test, start, smoke, metrics, guardrails; exit 0 = pass, exit 1 = a hard guardrail failed. `<repo> --record-characterisation`: modernize |
+| `check.mjs` | `<repo> --baseline`: round 0, records known issues, commits `evolve: baseline`. `<repo> --start N`: records start commit and time (refuses a dirty tree). `<repo> --round N`: setup (once), build, test, start, smoke, metrics, guardrails; exit 0 = pass, exit 1 = a hard guardrail failed. `<repo> --record-characterisation`: modernize |
 | `scan.mjs` | `<repo> --round N`: walks the routes (desktop and 390 px), lists endpoints, writes `rounds/rNNN/scan.json` |
 | `ship.mjs` | `<repo> --round N --summary <file>`: ships or reverts the round (see Ship) |
 | `usage.mjs` | `<repo>`: finds the transcripts, writes `usage.json`, prints a one-line total |
@@ -60,7 +62,7 @@ Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>
 | `thresholds` | `lighthousePerf -5`, `lighthouseA11y -5`, `cls 0.05` | allowed change against round 0 |
 | `characterisation.ignore` | `[]` | JSON keys ignored when comparing recorded responses (ids, timestamps) |
 | `knownIssues` | filled by `--baseline` | console errors, horizontal scroll routes, failing test count of round 0 |
-| `prices` | built-in table | EUR per million tokens per model; editable |
+| `prices` | built-in table | USD per million tokens per model; editable |
 
 ## Start
 

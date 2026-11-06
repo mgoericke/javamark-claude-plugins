@@ -8,7 +8,7 @@ Rounds are grouped into blocks; evolve stops after each block so you can look, s
 - **modernize mode**: every round is one roadmap step toward a target stack; recorded behaviour must not change.
 
 Each round is measured against round 0 (build, tests, app start, smoke, screenshots, Lighthouse, layout metrics) and only ships when the hard guardrails pass.
-A local dashboard shows every round with its screenshots, diffs, guardrails and an estimated token cost.
+A local dashboard shows every round with its screenshots, diffs, guardrails and an estimated token cost (USD list prices, editable in `evolve.json`).
 
 evolve never pushes, merges or deletes branches. Publishing is your call.
 
@@ -62,6 +62,11 @@ Everything lives in the target repo under `.evolve/`.
 ```
 
 `.evolve/local/` and `.evolve/worktrees/` are gitignored by `init.mjs` and do not count as a dirty tree.
+
+## Dashboard previews of old rounds
+
+The dashboard starts an old round in its own git worktree under `.evolve/worktrees/`. It runs the `setup` command there, but not the build.
+An app that serves a built `dist/` may therefore show a stale or empty page. Worktrees are never committed; you can delete `.evolve/worktrees/` at any time to free space.
 
 ## Development
 

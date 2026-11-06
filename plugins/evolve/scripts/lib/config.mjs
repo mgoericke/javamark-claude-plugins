@@ -7,7 +7,7 @@ export const roundDir = (repo, n) => path.join(evolveDir(repo), 'rounds', `r${pa
 export const tagName = (run, n) => `evolve-${run}-r${pad(n)}`;
 const configPath = (repo) => path.join(evolveDir(repo), 'evolve.json');
 
-// EUR per million tokens; editable estimate
+// USD list prices per million tokens; editable estimate
 export const DEFAULT_PRICES = {
   'claude-opus-5-5': { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   'claude-sonnet-5-5': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
