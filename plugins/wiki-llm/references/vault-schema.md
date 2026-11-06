@@ -170,6 +170,8 @@ What the wiki doesn't yet know. What sources would strengthen this.
 
 Triggered when the human says: **"ingest [filename]"** or drops a file and asks you to process it.
 
+If `log.md` shows the source was ingested before, recreate only what is missing and do not raise any `source_count` that already includes it.
+
 Steps (in order):
 1. **Read** the source file from `raw/`.
 2. **Discuss** with the human: summarize key takeaways, ask if anything should be emphasized or de-emphasized. Wait for human input before writing.
