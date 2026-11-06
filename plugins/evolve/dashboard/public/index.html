@@ -1,2 +1,40 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>evolve</title></head><body><h1>evolve</h1></body></html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>evolve – Dashboard</title>
+<meta name="description" content="Lokales Dashboard von evolve: Verbrauch, Runden, der Stand einer Runde und ihre Änderungen.">
+<script>
+  // follow the system until the viewer picks a theme
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('evolve-theme'); } catch (e) { /* storage blocked */ }
+    if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+  })();
+</script>
+<link rel="stylesheet" href="vendor/basecoat.cdn.min.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<header class="top">
+  <span class="logo"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 18c3-9 7-12 16-12"/><path d="M15 3l5 3-3 5"/><circle cx="4" cy="18" r="2"/></svg>evolve</span>
+  <span class="crumbs" id="crumbs"></span>
+  <span class="live muted" id="live" hidden></span>
+  <span class="top-end">
+    <span class="muted num" id="blockinfo"></span>
+    <button type="button" class="btn" data-variant="outline" data-size="icon-sm" data-theme-toggle aria-label="Hell oder dunkel"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/></svg></button>
+  </span>
+</header>
+
+<section class="kpis" aria-label="Überblick" id="kpis"></section>
+
+<div class="shell">
+  <nav class="timeline" aria-label="Runden" id="rounds"></nav>
+  <main class="main" id="main"><p class="state">Lade …</p></main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

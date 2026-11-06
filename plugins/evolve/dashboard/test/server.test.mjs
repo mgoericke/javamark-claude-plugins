@@ -71,10 +71,10 @@ test('server binds to 127.0.0.1 only', () => {
   assert.equal(srv.server.address().address, '127.0.0.1');
 });
 
-test('serves placeholder UI at /', async () => {
+test('serves the dashboard UI at /', async () => {
   const res = await get('/');
   assert.equal(res.status, 200);
-  assert.match(await res.text(), /<title>evolve<\/title>/);
+  assert.match(await res.text(), /<title>evolve – Dashboard<\/title>/);
 });
 
 test('start: reverted and running rounds are 409 with fallback', async () => {
