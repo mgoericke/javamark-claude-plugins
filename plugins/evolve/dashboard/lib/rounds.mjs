@@ -69,6 +69,8 @@ export function runInfo(repo, config) {
     mode: config.mode,
     blocks: config.blocks,
     roundsPerBlock: config.roundsPerBlock,
+    thresholds: config.thresholds,
+    app: { kind: config.app.kind },
     state: running ? 'running' : 'idle',
     currentRound: running ? running.round : null,
     usage: readUsage(repo),

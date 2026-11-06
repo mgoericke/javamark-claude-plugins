@@ -68,6 +68,8 @@ export async function createServer({ repo, port = 4173 }) {
     m = /^\/api\/rounds\/(\d+)\/start$/.exec(pathname);
     if (m) {
       if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' });
+      const origin = req.headers.origin;
+      if (origin !== undefined && origin !== `http://${req.headers.host}`) return json(res, 403, { error: 'foreign origin' });
       const n = Number(m[1]);
       if (!roundStatus(repo, n)) return json(res, 404, { error: 'unknown round' });
       try {

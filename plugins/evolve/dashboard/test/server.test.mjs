@@ -28,6 +28,8 @@ test('GET /api/run lists rounds in order with status', async () => {
   assert.deepEqual(j.rounds[1].usage, { cost: 0.5, total: 4 });
   assert.equal(j.rounds[2].usage, null);
   assert.equal(j.usage.cost, 1.5);
+  assert.equal(j.thresholds.lighthousePerf, -5);
+  assert.deepEqual(j.app, { kind: 'web' });
 });
 
 test('GET /api/rounds/:n returns detail', async () => {
@@ -83,6 +85,13 @@ test('start: reverted and running rounds are 409 with fallback', async () => {
     assert.equal(res.status, 409);
     assert.equal((await res.json()).fallback, 'screenshots');
   }
+});
+
+test('start: a foreign Origin is rejected with 403, the own origin is accepted', async () => {
+  const bad = await fetch(srv.url + 'api/rounds/1/start', { method: 'POST', headers: { origin: 'http://evil.example' } });
+  assert.equal(bad.status, 403);
+  const ok = await fetch(srv.url + 'api/rounds/1/start', { method: 'POST', headers: { origin: srv.url.replace(/\/$/, '') } });
+  assert.equal(ok.status, 200);
 });
 
 test('start: shipped round returns a live url', async () => {

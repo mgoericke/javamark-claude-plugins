@@ -1,7 +1,6 @@
 (function () {
   'use strict';
 
-  var LIMIT_DROP = 5; // Lighthouse limit = round 0 minus 5 (default threshold of evolve.json)
   var ICON = {
     shipped: '<path d="M5 12l5 5 9-10"/>',
     reverted: '<path d="M4 10h11a5 5 0 0 1 0 10H9"/><path d="M8 6l-4 4 4 4"/>',
@@ -15,7 +14,7 @@
     'main-content-top': 'Hauptinhalt mobil', 'controls-above': 'Bedienelemente oben', 'page-bytes': 'Seitengröße'
   };
 
-  var st = { run: null, runKey: '', details: {}, round: null, tab: 'live', view: 'desktop', overlay: true, previews: {} };
+  var st = { run: null, runKey: '', details: {}, round: null, tab: 'live', view: 'desktop', overlay: false, previews: {} };
   var timer = null;
   var nf = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 2 });
 
@@ -32,6 +31,14 @@
     (kids || []).forEach(function (c) { if (c) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
     return n;
   }
+  function svgIcon(inner) {
+    var n = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ['width:16', 'height:16', 'viewBox:0 0 24 24', 'fill:none', 'stroke:currentColor', 'stroke-width:2', 'aria-hidden:true'].forEach(function (a) { var i = a.indexOf(':'); n.setAttribute(a.slice(0, i), a.slice(i + 1)); });
+    n.innerHTML = inner; // static markup
+    return n;
+  }
+  var lighthouseDrop = function () { var t = st.run && st.run.thresholds; return Math.abs(t && t.lighthousePerf != null ? t.lighthousePerf : 5); };
+  var isBackend = function () { return !!(st.run && st.run.app && st.run.app.kind === 'backend'); };
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var pad = function (n) { return String(n).padStart(3, '0'); };
   var signed = function (d) { return (d > 0 ? '+' : '−') + nf.format(Math.abs(d)); };
@@ -91,6 +98,8 @@
     live.className = running ? 'live muted' : 'muted';
     if (running) live.textContent = 'Runde ' + running.round + ' baut gerade';
     var last = running || rs[rs.length - 1];
+    var finished = rs.filter(function (r) { return r.status === 'shipped' || r.status === 'reverted'; }).length;
+    $('#state').textContent = running ? 'läuft' : finished && finished >= run.blocks * run.roundsPerBlock ? 'fertig' : 'pausiert';
     $('#blockinfo').textContent = last && last.block ? 'Block ' + last.block + ' von ' + run.blocks : '';
   }
 
@@ -113,7 +122,7 @@
     root.appendChild(kpi('Kosten', u && u.cost != null ? '≈ ' + new Intl.NumberFormat('de-DE', { maximumFractionDigits: u.cost < 10 ? 2 : 0 }).format(u.cost) + ' €' : '–',
       u && u.unpriced && u.unpriced.length ? 'Schätzung, ohne Preis: ' + u.unpriced.join(', ') : 'Schätzung, Preise anpassbar'));
     root.appendChild(kpi('Lighthouse', latest ? String(latest.lighthouse) : '–',
-      base ? 'Runde 0: ' + base.lighthouse + ', Grenze ' + (base.lighthouse - LIMIT_DROP) : 'Runde 0 noch nicht gemessen'));
+      base ? 'Runde 0: ' + base.lighthouse + ', Grenze ' + (base.lighthouse - lighthouseDrop()) : 'Runde 0 noch nicht gemessen'));
     root.appendChild(modelsKpi(u));
   }
 
@@ -176,6 +185,23 @@
     return el;
   }
 
+  function metaNode(r, s) {
+    var meta = h('div', { cls: 'meta' }, [h('span', { cls: 'badge', 'data-variant': 'secondary', text: 'Runde ' + r.round + (r.block ? ' · Block ' + r.block : '') })]);
+    if (s && s.tidy) meta.appendChild(h('span', { cls: 'badge', 'data-variant': 'outline', text: 'Aufräumrunde' }));
+    ((s && s.compass) || []).forEach(function (c) { meta.appendChild(h('span', { cls: 'badge', 'data-variant': 'outline', text: '✓ ' + c })); });
+    return meta;
+  }
+
+  // the parts that depend on the run list, refreshed in place so the preview iframe keeps playing
+  function updateRunParts() {
+    var r = roundOf(st.round), d = cur(), meta = $('#main .head .meta'), card = $('#main .trend > section');
+    if (!r || !d) return;
+    if (meta) meta.replaceWith(metaNode(r, d.summary));
+    if (card) { card.textContent = ''; card.appendChild(trend(r.round)); }
+    var cap = $('#main .trend > header p');
+    if (cap) cap.textContent = 'Gestrichelt: Grenze (Runde 0 minus ' + lighthouseDrop() + ')';
+  }
+
   function renderMain() {
     var main = $('#main'), d = cur(), r = roundOf(st.round);
     if (!r) { main.textContent = ''; main.appendChild(h('p', { cls: 'state', text: 'Noch keine Runden.' })); return; }
@@ -183,13 +209,10 @@
     var s = d.summary, status = d.status;
     var why = s ? s.why : status === 'base' ? 'Scan, Messwerte und Screenshots, an denen alles Spätere gemessen wird.' : 'Der Runden-Agent baut gerade. Das Dashboard zeigt den Stand, sobald die Runde ausgeliefert ist.';
     main.textContent = '';
-    var meta = h('div', { cls: 'meta' }, [h('span', { cls: 'badge', 'data-variant': 'secondary', text: 'Runde ' + r.round + (r.block ? ' · Block ' + r.block : '') })]);
-    if (s && s.tidy) meta.appendChild(h('span', { cls: 'badge', 'data-variant': 'outline', text: 'Aufräumrunde' }));
-    ((s && s.compass) || []).forEach(function (c) { meta.appendChild(h('span', { cls: 'badge', 'data-variant': 'outline', text: '✓ ' + c })); });
-    main.appendChild(h('section', { cls: 'head' }, [meta, h('h1', { text: titleOf(r) }), h('p', { cls: 'why', text: why })]));
+    main.appendChild(h('section', { cls: 'head' }, [metaNode(r, s), h('h1', { text: titleOf(r) }), h('p', { cls: 'why', text: why })]));
     if (status === 'reverted') {
       main.appendChild(h('div', { cls: 'alert', 'data-variant': 'destructive' }, [
-        h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'aria-hidden': 'true', html: ICON.reverted }),
+        svgIcon(ICON.reverted),
         h('h2', { text: 'Zurückgedreht' }), h('section', { text: (s && s.revertReason) || 'Kein Grund angegeben.' })]));
     }
     var g = d.guardrails || (s && s.guardrails);
@@ -212,16 +235,16 @@
     });
     main.appendChild(h('div', { cls: 'lower' }, [
       h('section', { cls: 'card' }, [h('header', null, [h('h2', { text: 'Diese Runde' })]), h('section', null, [facts])]),
-      h('section', { cls: 'card trend' }, [h('header', null, [h('h2', { text: 'Lighthouse je Runde' }), h('p', { text: 'Gestrichelt: Grenze (Runde 0 minus ' + LIMIT_DROP + ')' })]), h('section', null, [trend(r.round)])])]));
+      h('section', { cls: 'card trend' }, [h('header', null, [h('h2', { text: 'Lighthouse je Runde' }), h('p', { text: 'Gestrichelt: Grenze (Runde 0 minus ' + lighthouseDrop() + ')' })]), h('section', null, [trend(r.round)])])]));
     renderPanel();
   }
 
   function trend(selected) {
     var pts = rounds().filter(function (r) { return r.status !== 'running'; });
     var base = pts.filter(function (r) { return r.round === 0 && r.lighthouse != null; })[0];
-    var vals = pts.map(function (r) { return r.lighthouse; }).filter(function (v) { return v != null; });
+    var vals = pts.map(function (r) { return r.lighthouse == null ? null : Number(r.lighthouse); }).filter(function (v) { return v != null; });
     if (!vals.length) return h('p', { cls: 'muted', text: 'Noch keine Messwerte.' });
-    var limit = base ? base.lighthouse - LIMIT_DROP : null;
+    var limit = base ? Number(base.lighthouse) - lighthouseDrop() : null;
     var lo = Math.max(0, Math.floor((Math.min.apply(null, vals.concat(limit == null ? [] : [limit])) - 3) / 5) * 5);
     var W = 320, H = 110, x0 = 26;
     var y = function (v) { return 10 + (100 - v) / (100 - lo) * 80; };
@@ -233,7 +256,7 @@
     if (limit != null) s += '<line class="limit" x1="' + x0 + '" x2="' + W + '" y1="' + y(limit) + '" y2="' + y(limit) + '"/>';
     var line = [], dots = '', last = null;
     pts.forEach(function (r, i) {
-      var cx = x0 + i * step, v = r.lighthouse != null ? r.lighthouse : last;
+      var cx = x0 + i * step, v = r.lighthouse != null ? Number(r.lighthouse) : last;
       if (r.lighthouse != null) { line.push(cx + ',' + y(v)); last = v; }
       if (v != null && (r.lighthouse != null || r.status === 'reverted')) {
         dots += '<circle class="' + (r.lighthouse != null ? '' : 'gone ') + (r.round === selected ? 'sel' : '') + '" cx="' + cx + '" cy="' + y(v) + '" r="4"><title>Runde ' + r.round + ': ' + (r.lighthouse != null ? r.lighthouse : 'zurückgedreht, nicht gemessen') + '</title></circle>';
@@ -297,7 +320,7 @@
       h('thead', null, [h('tr', null, [h('th', { text: 'Datei' }), h('th', { cls: 'num', text: 'hinzu' }), h('th', { cls: 'num', text: 'weg' })])]), tbody])]);
   }
 
-  function backendPanel(d, p) {
+  function backendPanel(d) {
     var eps = (d.metrics && d.metrics.endpoints) || [];
     var body = h('tbody');
     if (!eps.length) body.appendChild(h('tr', null, [h('td', { colspan: 3, cls: 'muted', text: 'Keine Endpunkte gemessen.' })]));
@@ -314,6 +337,7 @@
     var n = st.round;
     if (d.status === 'running') return h('p', { cls: 'state', text: 'Die Runde läuft noch. Eine Vorschau gibt es, sobald sie ausgeliefert ist.' });
     if (d.status === 'reverted') return h('div', null, [h('p', { cls: 'muted', text: 'Keine Vorschau, die Runde wurde zurückgedreht. Ihre Screenshots:' }), shotsPanel(d)]);
+    if (isBackend()) return backendPanel(d);
     var p = st.previews[n];
     if (!p) { startPreview(n); return h('p', { cls: 'state', text: 'Vorschau startet …' }); }
     if (p.pending) return h('p', { cls: 'state', text: 'Vorschau startet …' });
@@ -321,10 +345,11 @@
       var retry = h('button', { type: 'button', cls: 'btn', 'data-variant': 'outline', 'data-size': 'sm', 'data-retry': n, text: 'Erneut versuchen' });
       return h('div', null, [h('div', { cls: 'alert' }, [h('h2', { text: 'Keine Vorschau' }), h('section', { text: p.error })]), h('p', null, [retry]), shotsPanel(d)]);
     }
-    if (p.fallback) return backendPanel(d, p);
-    var f = viewShots(d)[0], entry = f && diffEntry(d, f);
+    if (p.fallback) return backendPanel(d);
+    if (st.overlay && d.diffs.some(function (x) { return x.box; })) {
+      return h('div', null, [h('p', { cls: 'hint-inline', text: 'Markierungen auf dem Screenshot' }), shotsPanel(d)]);
+    }
     var frame = h('div', { cls: 'frame' }, [h('iframe', { src: p.url, title: 'Vorschau Runde ' + n })]);
-    if (entry && entry.box) frame.appendChild(h('img', { cls: 'diff-layer', src: '/files/rounds/' + n + '/diff/' + encodeURIComponent(f.replace(/\.png$/, '-diff.png')), alt: '' }));
     var s = d.summary;
     return h('div', { cls: 'browser' }, [
       h('div', { cls: 'browser-bar' }, [h('i'), h('i'), h('i'), h('span', { cls: 'url', text: p.url }), h('span', { cls: 'tag', text: s && s.tag ? 'Tag ' + s.tag : '' })]),
@@ -380,29 +405,34 @@
   function select(n) {
     st.round = n;
     renderNav();
-    if (st.details[n]) { renderMain(); } else { renderMain(); loadDetail(n).then(function () { if (st.round === n) renderMain(); }); }
+    renderMain(); // the cache may render first
+    loadDetail(n).then(function (changed) { if (st.round === n && changed) renderMain(); });
   }
 
   function refresh() {
     clearTimeout(timer);
     return getJson('/api/run').then(function (res) {
+      if (!res.ok) throw new Error(res.json.error || 'Fehler');
       var key = JSON.stringify(res.json), changed = key !== st.runKey;
       st.run = res.json;
       st.runKey = key;
-      if (changed) {
-        var rs = rounds();
-        if (st.round == null || !roundOf(st.round)) {
-          var done = rs.filter(function (r) { return r.status !== 'running'; });
-          st.round = (done.length ? done[done.length - 1] : rs[rs.length - 1] || { round: null }).round;
-        }
-        renderTop(); renderKpis(); renderNav();
-        if (st.round == null) return renderMain();
-        return loadDetail(st.round).then(function (diff) { if (diff || !$('#main h1')) renderMain(); });
+      var rs = rounds();
+      if (st.round == null || !roundOf(st.round)) {
+        var done = rs.filter(function (r) { return r.status !== 'running'; });
+        st.round = (done.length ? done[done.length - 1] : rs[rs.length - 1] || { round: null }).round;
+        changed = true;
       }
+      if (changed) { renderTop(); renderKpis(); renderNav(); }
+      if (st.round == null) return renderMain();
+      var n = st.round;
+      return loadDetail(n).then(function (diff) {
+        if (st.round !== n) return;
+        if (diff || !$('#main h1')) renderMain(); else if (changed) updateRunParts();
+      });
     }).catch(function (e) {
-      if (!st.run) { $('#main').textContent = ''; $('#main').appendChild(h('p', { cls: 'state', text: 'Das Dashboard erreicht den Server nicht: ' + e.message })); }
+      if (!st.run) { $('#main').textContent = ''; $('#main').appendChild(h('p', { cls: 'state', text: 'Der Server antwortet nicht (' + e.message + '). Neuer Versuch in 5 s …' })); }
     }).then(function () {
-      if (st.run && st.run.state === 'running') timer = setTimeout(refresh, 5000);
+      if (!st.run || st.run.state === 'running') timer = setTimeout(refresh, 5000);
     });
   }
 
@@ -420,7 +450,8 @@
   document.addEventListener('change', function (e) {
     if (!e.target.matches('[data-overlay]')) return;
     st.overlay = e.target.checked;
-    document.querySelectorAll('.panel .stage').forEach(function (s) { s.classList.toggle('show-overlay', st.overlay); });
+    if (st.tab === 'live') renderPanel();
+    else document.querySelectorAll('.panel .stage').forEach(function (s) { s.classList.toggle('show-overlay', st.overlay); });
   });
 
   refresh();
