@@ -28,7 +28,7 @@ test('walk flags horizontal scroll on mobile', async (t) => {
     assert.equal(m.horizontalScroll, true);
     assert.equal(d.horizontalScroll, false);
     assert.equal(d.mainContentTop, null);
-    assert.equal(d.controlsAbove, 0);
+    assert.equal(d.controlsAbove, null); // mobile-only measurement
     assert.ok(typeof m.mainContentTop === 'number');
     assert.ok(m.bytes > 0);
     assert.ok(fs.existsSync(path.join(out, m.screenshot)));

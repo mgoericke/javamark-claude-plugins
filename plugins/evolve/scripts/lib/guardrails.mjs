@@ -20,6 +20,47 @@ export function parseFailing(output) {
   return 1;
 }
 
+// total test count from runner output; null when the runner printed none (maven -q prints nothing on success)
+export function parseTestCount(output) {
+  const text = String(output ?? '');
+  const mvn = [...text.matchAll(/Tests run: (\d+), Failures: \d+/g)].pop();
+  if (mvn) return Number(mvn[1]);
+  let m = text.match(/^(?:#|ℹ) tests (\d+)/m);
+  if (m) return Number(m[1]);
+  m = text.match(/Tests:.*?(\d+) total/);
+  if (m) return Number(m[1]);
+  m = text.match(/Tests\s+.*\((\d+)\)/);
+  if (m) return Number(m[1]);
+  return null;
+}
+
+// JUnit XML reports written since `since` (Maven surefire, Gradle); null when there are none
+export function countJunitReports(repo, since) {
+  const dirs = [path.join(repo, 'target', 'surefire-reports')];
+  try {
+    const gradle = path.join(repo, 'build', 'test-results');
+    for (const d of fs.readdirSync(gradle, { withFileTypes: true })) if (d.isDirectory()) dirs.push(path.join(gradle, d.name));
+  } catch { /* no gradle results */ }
+  let total = null;
+  for (const dir of dirs) {
+    let files = [];
+    try { files = fs.readdirSync(dir).filter((f) => /^TEST-.*\.xml$/.test(f)).map((f) => path.join(dir, f)); } catch { continue; }
+    for (const f of files) {
+      try {
+        if (since && fs.statSync(f).mtime < since) continue;
+        const m = fs.readFileSync(f, 'utf8').match(/<testsuite\b[^>]*\btests="(\d+)"/);
+        if (m) total = (total ?? 0) + Number(m[1]);
+      } catch { /* unreadable report */ }
+    }
+  }
+  return total;
+}
+
+// compiler and build tool warnings, one per line
+export function countWarnings(output) {
+  return (String(output ?? '').match(/^(?:\[WARNING\]|w: |WARN |.*\bwarning:)/gim) ?? []).length;
+}
+
 function smoke(baseline, current, config) {
   const known = config.knownIssues;
   const base = new Map(baseline.routes.map((r) => [key(r), r]));
@@ -102,10 +143,22 @@ export function evaluate({ baseline, current, config }) {
   soft.push({ name: 'main-content-top', pass: top.delta <= 0, value: top.value, delta: top.delta });
   const ctl = maxIncrease(baseline, current, 'controlsAbove');
   soft.push({ name: 'controls-above', pass: ctl.delta <= 0, value: ctl.value, delta: ctl.delta });
+  const tc = current.test.total;
+  const tb = baseline.test.total;
+  if (Number.isFinite(tc) && Number.isFinite(tb)) soft.push({ name: 'test-count', pass: tc >= tb, value: tc, baseline: tb, delta: tc - tb });
+  else if (Number.isFinite(tb)) soft.push({ name: 'test-count', pass: false, value: 'missing', detail: 'test count not found this round' });
+  const wc = current.build.warnings;
+  const wb = baseline.build.warnings;
+  if (Number.isFinite(wc) && Number.isFinite(wb)) soft.push({ name: 'build-warnings', pass: wc <= wb, value: wc, baseline: wb, delta: wc - wb });
   const sum = (m) => m.routes.reduce((a, r) => a + r.bytes, 0);
   const bb = sum(baseline);
   const bc = sum(current);
-  soft.push({ name: 'page-bytes', pass: bc <= bb * 1.1, value: bc, baseline: bb, delta: bc - bb });
+  // the sum hides which page got heavier: name the route view with the largest change
+  const base = new Map(baseline.routes.map((r) => [key(r), r]));
+  const moves = current.routes.filter((r) => base.has(key(r))).map((r) => ({ r, d: r.bytes - base.get(key(r)).bytes })).filter((x) => x.d !== 0);
+  const biggest = moves.sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
+  const kb = (d) => `${d > 0 ? '+' : ''}${Math.round(d / 1024)} kB`;
+  soft.push({ name: 'page-bytes', pass: bc <= bb * 1.1, value: bc, baseline: bb, delta: bc - bb, ...(biggest ? { detail: `largest change: ${label(biggest.r)} ${kb(biggest.d)}` } : {}) });
 
   return { pass: hard.every((c) => c.pass), hard, soft };
 }

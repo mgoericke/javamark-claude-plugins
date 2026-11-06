@@ -8,7 +8,7 @@ import { startApp, freePort, killAppsOnSignal } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { importDep, ensureDeps } from './lib/deps.mjs';
 import { head, isClean, dirtyPaths, codeTreeHash } from './lib/git.mjs';
-import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
+import { evaluate, parseFailing, parseTestCount, countJunitReports, countWarnings, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
 const charDir = (repo) => path.join(evolveDir(repo), 'characterisation');
 // a timeout counts as failure (status null, timedOut true)
@@ -55,20 +55,30 @@ async function runLighthouse(url) {
   } finally { await browser?.close().catch(() => {}); }
 }
 
-export async function collect(repo, config, outDir, { baseline = false } = {}) {
+export async function collect(repo, config, outDir, { baseline = false, logFile } = {}) {
   const notes = [];
   const m = { setup: { ok: true }, build: { ok: true }, test: { ok: true, failing: 0 }, start: { ok: false }, routes: [], endpoints: [] };
+  // setup, build and test output for the round agent (warnings, failing tests); never committed
+  if (logFile) { fs.mkdirSync(path.dirname(logFile), { recursive: true }); fs.writeFileSync(logFile, ''); }
+  const log = (step, cmd, r) => logFile && fs.appendFileSync(logFile, `== ${step}: ${cmd} (exit ${r.timedOut ? 'timeout' : r.status})\n${r.stdout ?? ''}${r.stderr ?? ''}\n`);
   if (config.app.setup) {
     // once, before build and test; startApp then skips it
     const r = runCommand(config.app.setup.replaceAll('{port}', String(await freePort())), repo, config.commandTimeoutMs);
+    log('setup', config.app.setup, r);
     m.setup = r.ok ? { ok: true } : { ok: false, detail: r.timedOut ? `setup timed out after ${Math.round(config.commandTimeoutMs / 1000)} s` : `setup failed (exit ${r.status})\n${`${r.stdout ?? ''}${r.stderr ?? ''}`.trim().split('\n').slice(-5).join('\n')}` };
   }
   if (config.app.build) {
-    m.build = { ok: runCommand(config.app.build, repo, config.commandTimeoutMs).ok };
+    const r = runCommand(config.app.build, repo, config.commandTimeoutMs);
+    log('build', config.app.build, r);
+    m.build = { ok: r.ok, warnings: countWarnings(`${r.stdout}\n${r.stderr}`) };
   }
   if (config.app.test) {
+    const since = new Date(Date.now() - 1000);
     const r = runCommand(config.app.test, repo, config.commandTimeoutMs);
-    m.test = r.ok ? { ok: true, failing: 0 } : { ok: false, failing: Math.max(1, parseFailing(`${r.stdout}\n${r.stderr}`)) };
+    log('test', config.app.test, r);
+    const out = `${r.stdout}\n${r.stderr}`;
+    const total = parseTestCount(out) ?? countJunitReports(repo, since);
+    m.test = { ...(r.ok ? { ok: true, failing: 0 } : { ok: false, failing: Math.max(1, parseFailing(out)) }), total };
   }
   let handle;
   try {
@@ -106,7 +116,10 @@ async function main(args) {
     if (!isClean(repo)) { console.error('commit or stash your changes before a round starts'); return 1; }
     const dir = roundDir(repo, startN);
     fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'start.txt'), `${head(repo)}\n${new Date().toISOString()}\n`);
+    const at = new Date().toISOString();
+    fs.writeFileSync(path.join(dir, 'start.txt'), `${head(repo)}\n${at}\n`);
+    console.log(`round ${startN} started at ${head(repo).slice(0, 7)}, ${at}; ${path.relative(repo, dir)}/ stays untracked until ship`);
+    console.log(`run: ${config.marker}`); // ties this session's usage to the run
     return 0;
   }
 
@@ -125,7 +138,7 @@ async function main(args) {
   const dir = roundDir(repo, n);
   fs.mkdirSync(dir, { recursive: true });
 
-  const { metrics, notes } = await collect(repo, config, dir, { baseline: isBaseline });
+  const { metrics, notes } = await collect(repo, config, dir, { baseline: isBaseline, logFile: path.join(evolveDir(repo), 'local', 'logs', `build-${path.basename(dir)}.log`) });
   fs.writeFileSync(path.join(dir, 'metrics.json'), JSON.stringify(metrics, null, 2) + '\n');
 
   let baseline;

@@ -104,6 +104,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
   scan(path.resolve(repo), round).then(
     (r) => {
       console.log(`scan r${round}: ${r.routes.length} route views, ${r.endpoints.endpoints.length} endpoints`);
+      console.log(`run: ${readConfig(path.resolve(repo)).marker}`); // ties this session's usage to the run
       // commit only what the scan wrote, so the next round starts from a clean tree
       const rel = path.relative(path.resolve(repo), roundDir(path.resolve(repo), round));
       const paths = ['scan.json', 'scan-shots'].map((f) => path.join(rel, f)).filter((f) => fs.existsSync(path.resolve(repo, f)));
