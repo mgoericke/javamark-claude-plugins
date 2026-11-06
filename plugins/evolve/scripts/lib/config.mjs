@@ -12,6 +12,9 @@ export const DEFAULT_PRICES = {
   'claude-opus-5-5': { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   'claude-sonnet-5-5': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
   'claude-haiku-5-5': { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  'claude-opus-4-5': { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
+  'claude-sonnet-4-5': { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 },
+  'claude-haiku-4-5': { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
 };
 
 const fail = (field, msg) => { throw new Error(`evolve.json: ${field} ${msg}`); };

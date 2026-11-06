@@ -5,13 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { findTranscripts, readUsage, sumUsage, estimateCost } from '../lib/usage.mjs';
+import { findTranscripts, readUsage, sumUsage, estimateCost, priceOf, unpricedModels } from '../lib/usage.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'evolve-usage-'));
 const line = (id, model, at, u = {}) => JSON.stringify({
   type: 'assistant', timestamp: at,
   message: { id, model, usage: { input_tokens: 1, output_tokens: 2, cache_creation_input_tokens: 3, cache_read_input_tokens: 4, ...u } },
 });
+// a tool result in which an evolve script printed the marker
+const ran = (marker) => JSON.stringify({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', content: `branch: evolve/x\n${marker}` }] } });
 const write = (file, lines) => {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, lines.join('\n') + '\n');
@@ -65,7 +67,7 @@ test('sums per model and window', () => {
 test('findTranscripts uses the marker, not the folder', () => {
   const root = tmp();
   const proj = path.join(root, 'proj');
-  write(path.join(proj, 'sA.jsonl'), ['hello evolve-run:x:1', 'more']);
+  write(path.join(proj, 'sA.jsonl'), [ran('evolve-run:x:1'), 'more']);
   write(path.join(proj, 'sA', 'subagents', 'agent-1.jsonl'), ['sub']);
   write(path.join(proj, 'sB.jsonl'), ['nothing here']);
   write(path.join(proj, 'sB', 'subagents', 'agent-2.jsonl'), ['nothing']);
@@ -77,9 +79,26 @@ test('a subagent file with the marker pulls in its parent session', () => {
   const root = tmp();
   const proj = path.join(root, 'proj');
   write(path.join(proj, 'sA.jsonl'), ['parent']);
-  write(path.join(proj, 'sA', 'subagents', 'agent-1.jsonl'), ['evolve-run:x:1']);
+  write(path.join(proj, 'sA', 'subagents', 'agent-1.jsonl'), [ran('evolve-run:x:1')]);
   write(path.join(proj, 'sA', 'subagents', 'agent-2.jsonl'), ['other']);
   assert.equal(findTranscripts('evolve-run:x:1', root).length, 3);
+});
+
+test('a session that only quotes the marker is not counted', () => {
+  const root = tmp();
+  const obs = path.join(root, 'observer');
+  write(path.join(obs, 'o.jsonl'), [
+    JSON.stringify({ type: 'user', message: { role: 'user', content: 'observed: evolve-run:x:1' } }),
+    JSON.stringify({ type: 'queue-operation', content: 'evolve-run:x:1' }),
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'text', text: 'run evolve-run:x:1' }] } }),
+  ]);
+  assert.deepEqual(findTranscripts('evolve-run:x:1', root), []);
+});
+
+test('priceOf strips the snapshot date', () => {
+  const prices = { 'claude-haiku-4-5': { input: 1 } };
+  assert.equal(priceOf(prices, 'claude-haiku-4-5-20251001'), prices['claude-haiku-4-5']);
+  assert.deepEqual(unpricedModels({ byModel: { 'claude-haiku-4-5-20251001': {}, z: {} } }, prices), ['z']);
 });
 
 test('findTranscripts with empty marker or missing root returns []', () => {
@@ -99,7 +118,7 @@ test('computeUsage writes usage.json per round and stores transcripts', async ()
   const repo = tmp();
   const root = tmp();
   write(path.join(root, 'p', 's.jsonl'), [
-    'evolve-run:t:1',
+    ran('evolve-run:t:1'),
     line('m1', 'claude-opus-5-5', '2026-01-01T00:05:00Z', { input_tokens: 1e6 }),
     line('m2', 'mystery', '2026-01-01T00:06:00Z'),
     line('m3', 'claude-opus-5-5', '2026-01-02T00:00:00Z'),
@@ -122,8 +141,8 @@ test('findTranscripts skips files older than since', () => {
   const root = tmp();
   const old = path.join(root, 'p', 'old.jsonl');
   const fresh = path.join(root, 'p', 'new.jsonl');
-  write(old, ['evolve-run:x:1']);
-  write(fresh, ['evolve-run:x:1']);
+  write(old, [ran('evolve-run:x:1')]);
+  write(fresh, [ran('evolve-run:x:1')]);
   const t = new Date('2026-01-01T00:00:00Z');
   fs.utimesSync(old, new Date('2025-12-01T00:00:00Z'), new Date('2025-12-01T00:00:00Z'));
   assert.deepEqual(findTranscripts('evolve-run:x:1', root, { since: t }), [fresh]);
@@ -162,7 +181,7 @@ test('run total counts only entries inside the run window', async () => {
   const repo = tmp();
   const root = tmp();
   write(path.join(root, 'p', 's.jsonl'), [
-    'evolve-run:w:1',
+    ran('evolve-run:w:1'),
     line('old', 'claude-opus-5-5', '2026-01-01T00:00:00Z', { input_tokens: 1e6, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }),
     line('new', 'claude-opus-5-5', '2026-01-02T00:05:00Z', { input_tokens: 10, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }),
   ]);

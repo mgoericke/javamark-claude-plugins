@@ -20,30 +20,37 @@ export function detectStack(repo) {
       url: 'http://127.0.0.1:{port}/',
     };
   }
-  if (has('pom.xml')) {
-    const mvn = has('mvnw') ? './mvnw' : 'mvn';
-    return {
-      kind: 'backend',
-      build: `${mvn} -q -DskipTests package`,
-      test: `${mvn} -q test`,
-      start: `${mvn} -q spring-boot:run`,
-      url: 'http://127.0.0.1:{port}/',
-    };
-  }
-  if (has('build.gradle') || has('build.gradle.kts')) {
-    const gradle = has('gradlew') ? './gradlew' : 'gradle';
-    return {
-      kind: 'backend',
-      build: `${gradle} build -x test`,
-      test: `${gradle} test`,
-      start: `${gradle} bootRun`,
-      url: 'http://127.0.0.1:{port}/',
-    };
-  }
+  if (has('pom.xml') || has('build.gradle') || has('build.gradle.kts')) return detectJvm(repo, has);
   if (has('index.html')) {
     return { kind: 'web', start: 'static:.', url: 'http://127.0.0.1:{port}/' };
   }
   return { kind: 'web', start: 'npm start', url: 'http://127.0.0.1:{port}/' };
+}
+
+// server-rendered UI or static assets in a JVM project make it a web app
+const WEB_DIRS = ['src/main/resources/templates', 'src/main/resources/META-INF/resources', 'src/main/resources/static', 'src/main/webapp'];
+
+function detectJvm(repo, has) {
+  const maven = has('pom.xml');
+  const read = (f) => (has(f) ? fs.readFileSync(path.join(repo, f), 'utf8') : '');
+  const build = maven ? read('pom.xml') : read('build.gradle') + read('build.gradle.kts');
+  const tool = maven ? (has('mvnw') ? './mvnw' : 'mvn') : (has('gradlew') ? './gradlew' : 'gradle');
+  const kind = WEB_DIRS.some(has) ? 'web' : 'backend';
+  const url = 'http://127.0.0.1:{port}/';
+  const cmds = maven
+    ? { build: `${tool} -q -DskipTests package`, test: `${tool} -q test` }
+    : { build: `${tool} build -x test`, test: `${tool} test` };
+  if (/io\.quarkus/.test(build)) {
+    // dev mode compiles on its own and also runs in the dashboard's worktrees; no console, no scheduler surprises
+    const run = maven ? `${tool} -q quarkus:dev` : `${tool} quarkusDev`;
+    return { kind, ...cmds, start: `${run} -Dquarkus.http.port={port} -Dquarkus.console.enabled=false`, url };
+  }
+  if (/spring-boot/.test(build)) {
+    const start = maven ? `${tool} -q spring-boot:run -Dspring-boot.run.arguments=--server.port={port}` : `${tool} bootRun --args=--server.port={port}`;
+    return { kind, ...cmds, start, url };
+  }
+  // unknown framework: /evolve start asks for the start command
+  return { kind, ...cmds, start: 'echo "set app.start in .evolve/evolve.json" && exit 1', url };
 }
 
 function parseArgs(argv) {
@@ -84,6 +91,7 @@ function main() {
   execFileSync('git', ['checkout', '-b', config.branch], { cwd: repo, stdio: 'pipe' });
   writeConfig(repo, config);
   ensureGitignore(repo);
+  fs.mkdirSync(path.join(repo, '.evolve', 'local', 'logs'), { recursive: true });
   commitAll(repo, `evolve: start run ${run}`);
   console.log(`branch: ${config.branch}`);
   console.log(`config: ${path.join(repo, '.evolve', 'evolve.json')}`);
