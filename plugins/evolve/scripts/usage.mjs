@@ -43,13 +43,14 @@ export function computeUsage(repo, { root, now = new Date() } = {}) {
   const files = findTranscripts(config.marker, root, { since: sinceOf(repo, config), known: config.transcripts });
   writeConfig(repo, { ...config, transcripts: files });
   const entries = readUsage(files);
+  const since = sinceOf(repo, config);
   const pack = (sum) => ({
     total: sum.total, byModel: sum.byModel, cost: estimateCost(sum, config.prices),
     ...(unpricedModels(sum, config.prices).length ? { unpriced: unpricedModels(sum, config.prices) } : {}),
   });
   const rounds = {};
   for (const [n, win] of Object.entries(roundWindows(repo, now))) rounds[n] = pack(sumUsage(entries, win));
-  const result = { at: now.toISOString(), ...pack(sumUsage(entries)), rounds };
+  const result = { at: now.toISOString(), ...pack(sumUsage(entries, { from: since, to: now })), rounds };
   fs.writeFileSync(path.join(evolveDir(repo), 'usage.json'), JSON.stringify(result, null, 2) + '\n');
   return result;
 }

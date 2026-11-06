@@ -155,3 +155,18 @@ test('usage CLI commits only usage.json and evolve.json, tree stays clean', asyn
   assert.ok(files.every((f) => ['.evolve/usage.json', '.evolve/evolve.json'].includes(f)), files.join(','));
   assert.equal(g('status', '--porcelain').trim(), '?? stray.txt');
 });
+
+test('run total counts only entries inside the run window', async () => {
+  const { computeUsage } = await import('../usage.mjs');
+  const { applyDefaults, writeConfig } = await import('../lib/config.mjs');
+  const repo = tmp();
+  const root = tmp();
+  write(path.join(root, 'p', 's.jsonl'), [
+    'evolve-run:w:1',
+    line('old', 'claude-opus-5-5', '2026-01-01T00:00:00Z', { input_tokens: 1e6, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }),
+    line('new', 'claude-opus-5-5', '2026-01-02T00:05:00Z', { input_tokens: 10, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }),
+  ]);
+  writeConfig(repo, applyDefaults({ run: 'w', mode: 'invent', app: { kind: 'web', start: 's', url: 'u' }, marker: 'evolve-run:w:1', createdAt: '2026-01-02T00:00:00Z' }));
+  const r = computeUsage(repo, { root, now: new Date('2026-01-03T00:00:00Z') });
+  assert.equal(r.total.input, 10);
+});
