@@ -58,6 +58,7 @@ Everything lives in the target repo under `.evolve/`.
 ├── local/               # never committed
 │   ├── dashboard.log
 │   ├── logs/build-rNNN.log  # setup, build and test output of each check
+│   ├── logs/start-rNNN.log  # app output during the check
 │   ├── logs/app-rNNN.log    # apps started by the dashboard
 │   ├── logs/scan-rNNN.log   # scan output
 │   └── summary-rNNN.json    # round summary drafts

@@ -26,7 +26,7 @@ All run data lives in the target repo under `.evolve/`. Scripts are called as `n
 | `.evolve/rounds/rNNN/` | `start.txt`, `scan.json`, `metrics.json`, `guardrails.json`, `shots/`, `summary.json`, `diffs.json`, `diff/` |
 | `.evolve/characterisation/` | modernize: recorded behaviour |
 | `.evolve/usage.json` | token usage per round, written by `usage.mjs` |
-| `.evolve/local/` | never committed: `dashboard.log`, `logs/build-rNNN.log` (setup, build and test output of each check), `logs/app-rNNN.log` (dashboard apps), `logs/scan-rNNN.log` (scan), scratch summaries |
+| `.evolve/local/` | never committed: `dashboard.log`, `logs/build-rNNN.log` (setup, build and test output of each check), `logs/start-rNNN.log` (the app's output during the check), `logs/app-rNNN.log` (dashboard apps), `logs/scan-rNNN.log` (scan), scratch summaries |
 | `.evolve/worktrees/` | never committed: one git worktree per round for the dashboard |
 
 `.evolve/local/` and `.evolve/worktrees/` are gitignored by `init.mjs`; they do not count as a dirty tree.
@@ -98,7 +98,7 @@ After each round subagent returns, the main session reads `.evolve/rounds/rNNN/s
 - `status: shipped`: note title and guardrail result, continue.
 
 **After the block.**
-1. `usage.mjs <repo>`. The script commits `usage.json` and `evolve.json` itself as `evolve: usage`. The total includes this orchestrating session from the run's start; the per-round numbers cover the round windows only.
+1. `usage.mjs <repo>`. The script commits `usage.json` and `evolve.json` itself as `evolve: usage`. The total runs from the run's start to the end of its last round, including this orchestrating session; the per-round numbers cover the round windows only.
 2. Write the block summary: what shipped (titles), the best ideas, the metric trend against round 0 (Lighthouse, CLS, `mainContentTop`, `controlsAbove`, test count, build warnings from each `metrics.json` and `guardrails.json`), reverted rounds with reasons, tokens per model and the cost. Cost is always shown as "≈ … (estimate)", never as a fact; prices are editable in `evolve.json`. Models without a price are listed as unpriced.
 3. Offer exactly three choices: **continue** (next block), **change the compass** (edit `COMPASS.md` with the user, commit it, then continue), **stop**.
 

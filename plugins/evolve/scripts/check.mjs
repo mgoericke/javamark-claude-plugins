@@ -82,7 +82,8 @@ export async function collect(repo, config, outDir, { baseline = false, logFile 
   }
   let handle;
   try {
-    handle = await startApp(config.app, { cwd: repo, skipSetup: true });
+    // the app's own output, next to the build log, so a failed start can be read
+    handle = await startApp(config.app, { cwd: repo, skipSetup: true, ...(logFile ? { log: logFile.replace(/build-(r\d+)\.log$/, 'start-$1.log') } : {}) });
     m.start = { ok: true };
   } catch (e) { m.start = { ok: false, detail: String(e.message ?? e).split('\n').slice(0, 5).join('\n') }; }
   if (handle) {

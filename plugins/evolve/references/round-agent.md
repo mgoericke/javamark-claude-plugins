@@ -18,7 +18,7 @@ the round number `N`, the block number and whether the round is the tidy-up roun
 3. Choose the idea (`idea-rules.md`; tidy-up and modernize rounds see below). Write title, why and the compass check.
 4. Build it. Keep the app runnable.
 5. If the round changes a page that is not in `routes`, add its route to `routes` in `.evolve/evolve.json` before the check. That route has no round-0 value, so its relative checks start with this round.
-6. `node <plugin>/scripts/check.mjs <repo> --round N`. It takes minutes (build, all tests, start, browser walk, Lighthouse): use Bash `timeout: 600000` or run it in the background and wait. A cut-off is not a failure. Exit 0 means every hard guardrail passed; read the `FAIL` lines otherwise. Build and test output is in `.evolve/local/logs/build-rNNN.log`.
+6. `node <plugin>/scripts/check.mjs <repo> --round N`. It takes minutes (build, all tests, start, browser walk, Lighthouse): use Bash `timeout: 600000` or run it in the background and wait. A cut-off is not a failure. Exit 0 means every hard guardrail passed; read the `FAIL` lines otherwise. Build and test output is in `.evolve/local/logs/build-rNNN.log`, the app's own output in `start-rNNN.log`.
 7. Fix and check again, at most `maxAttempts` attempts in total (the first check counts).
 8. Write `<repo>/.evolve/local/summary-rNNN.json` (`round-summary-schema.md`) and run `node <plugin>/scripts/ship.mjs <repo> --round N --summary <that file>`.
    - All hard guardrails passed: `"status": "shipped"`.
