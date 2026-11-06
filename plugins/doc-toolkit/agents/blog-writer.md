@@ -1,9 +1,11 @@
 ---
 name: blog-writer
 description: Analyzes a Java/Quarkus project and creates a technical blog post from it — with code examples, architecture explanations, and lessons learned.
-model_preference: opus
+model: opus
 tools:
   - Read
+  - Write
+  - Edit
   - Grep
   - Glob
   - Bash

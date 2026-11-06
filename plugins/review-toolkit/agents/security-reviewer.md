@@ -1,7 +1,7 @@
 ---
 name: security-reviewer
 description: Specialized agent for security reviews of Quarkus projects — OWASP checks, LLM injection prevention, secrets management, and Keycloak configuration.
-model_preference: opus
+model: opus
 tools:
   - Read
   - Grep

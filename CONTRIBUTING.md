@@ -84,12 +84,7 @@ javamark-claude-plugins/
   "name": "my-plugin",
   "version": "1.0.0",
   "description": "What does this plugin do?",
-  "author": { "name": "Mark" },
-  "components": {
-    "skills": ["skills/"],
-    "commands": ["commands/"],
-    "agents": ["agents/"]
-  }
+  "author": { "name": "Mark" }
 }
 ```
 

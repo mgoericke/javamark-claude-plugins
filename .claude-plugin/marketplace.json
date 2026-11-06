@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "sdd-toolkit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Spec-Driven Development Toolkit: Create specifications, derive features, and use coworker mode for pair programming with Claude. Use this plugin for SDD workflows, spec creation, and the /coworker mode.",
       "source": "./plugins/sdd-toolkit",
       "category": "development",
@@ -32,7 +32,7 @@
     },
     {
       "name": "review-toolkit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Code reviews with specialized agents for architecture, security, test coverage, and Quarkus best practices. Use this plugin for systematic code quality checks.",
       "source": "./plugins/review-toolkit",
       "category": "quality",
@@ -40,7 +40,7 @@
     },
     {
       "name": "doc-toolkit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Create documentation and blog posts: Technical docs, ADRs, and blog articles from Java projects. Use this plugin for documentation tasks and content creation.",
       "source": "./plugins/doc-toolkit",
       "category": "documentation",
@@ -48,7 +48,7 @@
     },
     {
       "name": "frontend-toolkit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "description": "Frontend development with TailAdmin, Alpine.js, and Quarkus templates. Build prototypes, dashboards, and forms. Use this plugin for UI development.",
       "source": "./plugins/frontend-toolkit",
       "category": "development",

@@ -1,7 +1,7 @@
 ---
 name: spec-reviewer
 description: Reviews domain specifications for compliance with SDD rules — no technical details in specs, correct structure, complete acceptance criteria.
-model_preference: sonnet
+model: sonnet
 tools:
   - Read
   - Grep

@@ -1,9 +1,11 @@
 ---
 name: portal-designer
 description: Designs and builds clickable prototypes for web portals with role-based UI design.
-model_preference: sonnet
+model: sonnet
 tools:
   - Read
+  - Write
+  - Edit
   - Grep
   - Glob
   - Bash
