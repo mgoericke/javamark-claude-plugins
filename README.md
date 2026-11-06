@@ -23,9 +23,9 @@ Plugin marketplace for Claude Code — hosted on GitHub, installable via the `/p
 /plugin
 
 # Or install directly
-/plugin install sdd-toolkit@javamark-claude-skills
-/plugin install java-scaffold@javamark-claude-skills
-/plugin install review-toolkit@javamark-claude-skills
+/plugin install sdd-toolkit@javamark-claude-plugins
+/plugin install java-scaffold@javamark-claude-plugins
+/plugin install review-toolkit@javamark-claude-plugins
 ```
 
 ### Use plugins
@@ -49,7 +49,7 @@ The `wiki-llm` plugin turns a local folder of Markdown files into a searchable, 
 
 **Install:**
 ```bash
-/plugin install wiki-llm@javamark-claude-skills
+/plugin install wiki-llm@javamark-claude-plugins
 ```
 
 **Set up your wiki** (once, creates `~/wiki` with folder structure and index):
@@ -142,7 +142,7 @@ Technology is tracked via `tags:` frontmatter — keeping the structure neutral 
 ## Directory Structure
 
 ```
-javamark-claude-skills/
+javamark-claude-plugins/
 ├── .claude-plugin/
 │   └── marketplace.json          # Plugin registry
 ├── plugins/
@@ -231,16 +231,16 @@ Plugins can be pre-configured in Claude Code settings:
 // .claude/settings.json (project or user level)
 {
   "extraKnownMarketplaces": {
-    "javamark-claude-skills": {
+    "javamark-claude-plugins": {
       "source": {
         "source": "url",
-        "url": "https://github.com/mgoericke/javamark-claude-skills.git"
+        "url": "https://github.com/mgoericke/javamark-claude-plugins.git"
       }
     }
   },
   "enabledPlugins": {
-    "sdd-toolkit@javamark-claude-skills": true,
-    "java-scaffold@javamark-claude-skills": true
+    "sdd-toolkit@javamark-claude-plugins": true,
+    "java-scaffold@javamark-claude-plugins": true
   }
 }
 ```
