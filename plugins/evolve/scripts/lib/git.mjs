@@ -9,9 +9,14 @@ export function head(repo) {
 }
 
 export function isClean(repo) {
-  const out = run(repo, 'status', '--porcelain', '--untracked-files=all');
+  return dirtyPaths(repo).length === 0;
+}
+
+// porcelain lines of everything that makes the tree dirty (evolve's own local dirs excluded)
+export function dirtyPaths(repo) {
   const local = ['.evolve/worktrees/', '.evolve/local/'];
-  return !out.split('\n').some((l) => l && !local.some((p) => l.slice(3).startsWith(p)));
+  return run(repo, 'status', '--porcelain', '--untracked-files=all').split('\n')
+    .filter((l) => l && !local.some((p) => l.slice(3).startsWith(p))).map((l) => l.slice(3));
 }
 
 export function commitAll(repo, message) {

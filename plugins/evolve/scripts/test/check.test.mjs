@@ -84,3 +84,21 @@ test('commandTimeoutMs defaults to 20 minutes and is validated', () => {
   assert.equal(applyDefaults(base).commandTimeoutMs, 1200000);
   assert.throws(() => applyDefaults({ ...base, commandTimeoutMs: 0 }), /commandTimeoutMs/);
 });
+
+const server = `node -e "require('http').createServer((q,s)=>s.end('ok')).listen(process.env.PORT)"`;
+
+test('--baseline fails and names files the setup left behind', () => {
+  const dir = repoWith({ start: server, setup: 'touch stray.txt' });
+  try {
+    commitAll(dir);
+    const r = spawnSync('node', [check, dir, '--baseline'], { encoding: 'utf8', env: ident });
+    assert.equal(r.status, 1, r.stderr + r.stdout);
+    assert.match(r.stderr, /baseline left files: .*stray\.txt — add them to \.gitignore or commit them, then rerun --baseline/);
+    // once ignored, the baseline goes through
+    fs.writeFileSync(path.join(dir, '.gitignore'), 'stray.txt\n');
+    commitAll(dir);
+    const again = spawnSync('node', [check, dir, '--baseline'], { encoding: 'utf8', env: ident });
+    assert.doesNotMatch(again.stderr, /baseline left files/); // (exit code also depends on a local Lighthouse run)
+    assert.equal(spawnSync('node', [check, dir, '--start', '1'], { encoding: 'utf8' }).status, 0);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

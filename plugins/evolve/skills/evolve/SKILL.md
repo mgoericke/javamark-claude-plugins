@@ -71,6 +71,7 @@ Playwright (and optionally Lighthouse) live in `~/.cache/evolve/<plugin version>
 5. Edit `.evolve/evolve.json` with the interview results (commands, `routes`, `endpoints`, `roundsPerBlock`, `blocks`, thresholds). Write `.evolve/COMPASS.md`. Do not commit yet.
 6. `check.mjs <repo> --baseline`. It first installs dependencies if needed (slow on the first run), then builds, tests, starts the app, walks the routes, takes screenshots and metrics, records the known issues, and commits `evolve: baseline` (including `evolve.json` and `COMPASS.md`).
    - If it reports `evolve needs a running baseline` (build or start failed), **stop**. Show the output, say that evolve needs a baseline that builds and starts, and ask the user to fix it. Run `--baseline` again afterwards.
+   - If it reports `baseline left files: …`, show those files to the user and ask whether to ignore (`.gitignore`) or commit them, then rerun `--baseline`.
 7. Show the **known issues** from `evolve.json` (`knownIssues`): console errors, routes with horizontal scroll, failing tests. A round may not add new ones and may fix old ones.
 8. Modernize only: run the setup block (see "Setup block (modernize)") now, as the end of Start, and stop there for the user's confirmation.
 9. Offer `/evolve board` and `/evolve next`.

@@ -7,7 +7,7 @@ import { readConfig, writeConfig, roundDir, evolveDir } from './lib/config.mjs';
 import { startApp, freePort } from './lib/app.mjs';
 import { walkRoutes } from './lib/walk.mjs';
 import { importDep, ensureDeps } from './lib/deps.mjs';
-import { head, isClean } from './lib/git.mjs';
+import { head, isClean, dirtyPaths } from './lib/git.mjs';
 import { evaluate, parseFailing, snapshotCharacterisation, recordCharacterisation, compareCharacterisation } from './lib/guardrails.mjs';
 
 const charDir = (repo) => path.join(evolveDir(repo), 'characterisation');
@@ -154,6 +154,10 @@ async function main(args) {
     g('add', '--', '.evolve', ':(exclude).evolve/worktrees');
     const c = g('commit', '-q', '-m', 'evolve: baseline', '--', '.evolve');
     if (c.status !== 0 && !/nothing to commit/.test(c.stdout + c.stderr)) { console.error(`baseline commit failed: ${c.stderr || c.stdout}`); return 1; }
+    if (!isClean(repo)) {
+      console.error(`baseline left files: ${dirtyPaths(repo).join(', ')} — add them to .gitignore or commit them, then rerun --baseline`);
+      return 1;
+    }
   }
   return result.pass ? 0 : 1;
 }
