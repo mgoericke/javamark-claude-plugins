@@ -11,5 +11,5 @@
 
 ## Installation
 ```bash
-/plugin install PLUGIN_NAME@javamark-claude-skills
+/plugin install PLUGIN_NAME@javamark-claude-plugins
 ```
