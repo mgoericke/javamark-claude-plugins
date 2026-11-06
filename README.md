@@ -41,6 +41,21 @@ Skills are automatically activated when they match the current task.
 
 ## Latest Plugins
 
+### evolve — Iteration Lab
+
+> Let Claude develop an existing app further in rounds, on its own local branch, with measured guardrails and a dashboard to review every round.
+
+Each round ships one bold idea (invent mode) or one roadmap step (modernize mode, behaviour must not change). Every round is one commit plus the tag `evolve-<run>-rNNN`, checked by build, tests, smoke, screenshots and metrics. evolve never pushes or merges. See [plugins/evolve/README.md](plugins/evolve/README.md).
+
+**Install:**
+```bash
+/plugin install evolve@javamark-claude-skills
+```
+
+**Use:** `/evolve start`, then `/evolve next`, `/evolve board`, `/evolve status`, `/evolve review`.
+
+---
+
 ### wiki-llm — Personal LLM-Powered Knowledge Base
 
 > Inspired by Andrej Karpathy's Wiki-LLM concept: your personal second brain, made traversable by Claude Code. Plain Markdown, Git-versioned, no external tooling.
@@ -109,6 +124,7 @@ Technology is tracked via `tags:` frontmatter — keeping the structure neutral 
 | **infografik** | Data visualization | infografik | /infografik |
 | **token-budget** | LLM token budget management | token-budget | /token-budget |
 | **wiki-llm** | Personal LLM-powered knowledge base | wiki, wiki-curator | /wiki, /wiki-save, /wiki-save-session, /wiki-connect, /wiki-status, /wiki-init |
+| **evolve** | Iteration lab: improve a repo round by round with guardrails and a dashboard | evolve | /evolve |
 
 ## Create a New Plugin
 

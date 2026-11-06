@@ -77,6 +77,14 @@
       "source": "./plugins/wiki-llm",
       "category": "knowledge",
       "tags": ["wiki", "knowledge-management", "markdown", "personal", "notes"]
+    },
+    {
+      "name": "evolve",
+      "version": "0.1.0",
+      "description": "Iteration lab: let Claude improve a repository round by round on its own branch, with scans, measured guardrails, one commit and tag per round, and a local dashboard. Modes: invent (new ideas) and modernize (behaviour must not change).",
+      "source": "./plugins/evolve",
+      "category": "development",
+      "tags": ["iteration", "modernization", "dashboard", "playwright"]
     }
   ]
 }
