@@ -37,7 +37,10 @@ public class TokenUsageTracker implements ChatModelListener {
 
     @Override
     public void onResponse(ChatModelResponseContext context) {
-        var usage = context.response().tokenUsage();
+        var usage = context.chatResponse().tokenUsage();
+        if (usage == null) {
+            return; // not every provider reports usage
+        }
         String service = extractServiceName(context);
 
         var record = new UsageRecord(
@@ -68,9 +71,8 @@ public class TokenUsageTracker implements ChatModelListener {
     }
 
     private String extractServiceName(ChatModelResponseContext context) {
-        // Services should set a "service-name" attribute on their ChatModel request.
-        // Example: chatModel.chat(ChatRequest.builder().messages(...).build(),
-        //          Map.of("service-name", "order-service"))
+        // Attributes are shared between onRequest and onResponse of one call.
+        // Set "service-name" in onRequest, for example from a request-scoped bean.
         Object serviceName = context.attributes().get("service-name");
         return serviceName != null ? serviceName.toString() : "default";
     }
@@ -115,6 +117,30 @@ public class InMemoryUsageRepository implements UsageRepository {
     }
 
     @Override
+    public long getMonthlyTotalForService(String service) {
+        return currentMonth(service).mapToLong(UsageRecord::totalTokens).sum();
+    }
+
+    @Override
+    public TokenUsageSummary getSummary(String service, String period) {
+        var calls = currentMonth(service).toList(); // in memory only the current month is kept
+        return new TokenUsageSummary(service, period,
+            calls.stream().mapToLong(UsageRecord::inputTokens).sum(),
+            calls.stream().mapToLong(UsageRecord::outputTokens).sum(),
+            calls.stream().mapToLong(UsageRecord::totalTokens).sum(),
+            calls.size());
+    }
+
+    private Stream<UsageRecord> currentMonth(String service) {
+        var start = YearMonth.now().atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        synchronized (records) {
+            return List.copyOf(records).stream()
+                .filter(r -> !r.recordedAt().isBefore(start))
+                .filter(r -> service == null || service.equals(r.service()));
+        }
+    }
+
+    @Override
     public boolean isAlertSent(double threshold) {
         return alertsSent.getOrDefault(threshold, false);
     }
@@ -128,6 +154,7 @@ public class InMemoryUsageRepository implements UsageRepository {
     void resetMonthly() {
         monthlyUsage.clear();
         alertsSent.clear();
+        records.clear();
     }
 
     private String currentMonthKey() {
@@ -141,7 +168,7 @@ public class InMemoryUsageRepository implements UsageRepository {
 ```java
 @ApplicationScoped
 @IfBuildProperty(name = "token-budget.cost.persistence", stringValue = "db")
-public class DatabaseUsageRepository implements UsageRepository {
+public abstract class DatabaseUsageRepository implements UsageRepository { // skeleton: implement all methods, then drop abstract
 
     // Delegates to a Panache entity mapped to the token_usage table.
     // Implement each method using Panache queries against TokenUsageEntity.
@@ -156,9 +183,11 @@ public class DatabaseUsageRepository implements UsageRepository {
     //   }
     //
     //   public long getMonthlyTotal() {
-    //       return TokenUsageEntity.find("recorded_at >= ?1",
-    //           YearMonth.now().atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant())
-    //           .project(Long.class).firstResult();
+    //       return TokenUsageEntity.getEntityManager().createQuery(
+    //           "select coalesce(sum(e.inputTokens + e.outputTokens), 0) "
+    //               + "from TokenUsageEntity e where e.recordedAt >= :start", Long.class)
+    //           .setParameter("start", YearMonth.now().atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant())
+    //           .getSingleResult();
     //   }
     //
     // See Flyway migration below for the full schema.

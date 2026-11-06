@@ -1,0 +1,8 @@
+{
+  "name": "quarkus-toolkit",
+  "version": "1.0.0",
+  "description": "Build Quarkus features: BCE scaffolds, OpenAPI specs, and token budgets for LangChain4j services.",
+  "author": {
+    "name": "Mark"
+  }
+}

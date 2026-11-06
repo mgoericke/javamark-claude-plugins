@@ -2,7 +2,7 @@
 
 **From domain spec to reviewed, documented code: Claude Code plugins for Java and Quarkus developers.**
 
-Ten plugins that work on their own and fit together: 13 skills that activate when the task matches, 17 slash commands and 7 specialist agents.
+Seven plugins that work on their own and fit together: 11 skills that activate when the task matches, 15 slash commands and 7 specialist agents.
 
 ```bash
 /plugin marketplace add mgoericke/javamark-claude-plugins
@@ -18,14 +18,12 @@ Most plugins cover one step of building a feature. Use one, or walk the whole wa
 | Step | You run | You get |
 |------|---------|---------|
 | **Specify** | `/spec` | A domain specification in plain business language, no frameworks or data types, checked by a spec reviewer |
-| **Scaffold** | `/scaffold UserProfile` | A Quarkus feature in BCE architecture with Panache entities, RESTEasy Reactive endpoints and LangChain4j services |
+| **Scaffold** | `/scaffold UserProfile` | A Quarkus feature in BCE architecture with Panache entities, RESTEasy Reactive endpoints and LangChain4j services, with a token budget if you want one |
 | **Design the API** | just ask | An OpenAPI 3.x spec, from your domain spec or from existing Quarkus code |
 | **Sketch the UI** | `/prototype` | A clickable HTML prototype for a web portal, with role-based screens |
 | **Review** | `/review` | A systematic review by specialist agents for architecture, security and performance |
 | **Explain** | `/adr`, `/blog` | Architecture decision records, and a technical blog post in English and German |
 | **Remember** | `/wiki-save-session` | What you learned, saved as notes you can search in the next session |
-
-Prefer to think it through together? `/coworker` turns Claude into a pair-programming partner who asks before building.
 
 ## All plugins
 
@@ -33,11 +31,9 @@ Prefer to think it through together? `/coworker` turns Claude into a pair-progra
 
 | Plugin | What it does | Try |
 |--------|--------------|-----|
-| [sdd-toolkit](plugins/sdd-toolkit/) | Spec-Driven Development: write specs, derive features, pair with Claude | `/spec`, `/coworker` |
-| [java-scaffold](plugins/java-scaffold/) | New Quarkus modules and features without the boilerplate | `/scaffold UserProfile` |
-| [openapi-toolkit](plugins/openapi-toolkit/) | Generate and validate OpenAPI specs, contract-first or from code | activates on its own |
+| [sdd-toolkit](plugins/sdd-toolkit/) | Spec-Driven Development: write specs, derive features, get them reviewed | `/spec` |
+| [quarkus-toolkit](plugins/quarkus-toolkit/) | New Quarkus features without the boilerplate, OpenAPI specs, and token budgets for AI services | `/scaffold UserProfile`, `/token-budget` |
 | [frontend-toolkit](plugins/frontend-toolkit/) | Prototypes, dashboards and forms with TailAdmin, Alpine.js and Quarkus templates | `/prototype` |
-| [token-budget](plugins/token-budget/) | Keep LLM features within their context, cost and quota limits | `/token-budget` |
 
 ### Check
 
@@ -50,7 +46,6 @@ Prefer to think it through together? `/coworker` turns Claude into a pair-progra
 | Plugin | What it does | Try |
 |--------|--------------|-----|
 | [doc-toolkit](plugins/doc-toolkit/) | READMEs, ADRs and blog posts straight from your project | `/adr`, `/blog` |
-| [infografik](plugins/infografik/) | Data and processes as infographics, rendered to PNG or PDF with Python | `/infografik` |
 
 ### Remember
 
@@ -90,7 +85,7 @@ Commit this to `.claude/settings.json` and everyone gets the same plugins:
   },
   "enabledPlugins": {
     "sdd-toolkit@javamark-claude-plugins": true,
-    "java-scaffold@javamark-claude-plugins": true
+    "quarkus-toolkit@javamark-claude-plugins": true
   }
 }
 ```

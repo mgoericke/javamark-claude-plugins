@@ -8,27 +8,31 @@
   "plugins": [
     {
       "name": "sdd-toolkit",
-      "version": "1.0.1",
-      "description": "Spec-Driven Development Toolkit: Create specifications, derive features, and use coworker mode for pair programming with Claude. Use this plugin for SDD workflows, spec creation, and the /coworker mode.",
+      "version": "2.0.0",
+      "description": "Spec-Driven Development Toolkit: Create specifications, derive features, and have them reviewed. Use this plugin for SDD workflows and spec creation.",
       "source": "./plugins/sdd-toolkit",
       "category": "development",
-      "tags": ["sdd", "specs", "coworker", "methodology"]
+      "tags": [
+        "sdd",
+        "specs",
+        "methodology"
+      ]
     },
     {
-      "name": "java-scaffold",
+      "name": "quarkus-toolkit",
       "version": "1.0.0",
-      "description": "Generate Quarkus/Java project scaffolds: BCE architecture, Panache entities, RESTEasy endpoints, LangChain4j services. Use this plugin when creating new Quarkus modules or features.",
-      "source": "./plugins/java-scaffold",
+      "description": "Build Quarkus features: BCE scaffolds with Panache and LangChain4j, OpenAPI specs, and token budgets for AI services. Use this plugin when creating Quarkus modules, designing REST APIs, or limiting LLM context, cost and quota.",
+      "source": "./plugins/quarkus-toolkit",
       "category": "development",
-      "tags": ["java", "quarkus", "scaffold", "bce"]
-    },
-    {
-      "name": "openapi-toolkit",
-      "version": "1.0.0",
-      "description": "Generate and validate OpenAPI specifications. Creates API documentation from code or specs. Use this plugin for REST API design and documentation.",
-      "source": "./plugins/openapi-toolkit",
-      "category": "development",
-      "tags": ["openapi", "rest", "api", "swagger"]
+      "tags": [
+        "java",
+        "quarkus",
+        "scaffold",
+        "bce",
+        "openapi",
+        "langchain4j",
+        "token-budget"
+      ]
     },
     {
       "name": "review-toolkit",
@@ -36,7 +40,12 @@
       "description": "Code reviews with specialized agents for architecture, security, test coverage, and Quarkus best practices. Use this plugin for systematic code quality checks.",
       "source": "./plugins/review-toolkit",
       "category": "quality",
-      "tags": ["review", "quality", "security", "architecture"]
+      "tags": [
+        "review",
+        "quality",
+        "security",
+        "architecture"
+      ]
     },
     {
       "name": "doc-toolkit",
@@ -44,7 +53,12 @@
       "description": "Create documentation and blog posts: Technical docs, ADRs, and blog articles from Java projects. Use this plugin for documentation tasks and content creation.",
       "source": "./plugins/doc-toolkit",
       "category": "documentation",
-      "tags": ["docs", "blog", "adr", "documentation"]
+      "tags": [
+        "docs",
+        "blog",
+        "adr",
+        "documentation"
+      ]
     },
     {
       "name": "frontend-toolkit",
@@ -52,23 +66,12 @@
       "description": "Frontend development with TailAdmin, Alpine.js, and Quarkus templates. Build prototypes, dashboards, and forms. Use this plugin for UI development.",
       "source": "./plugins/frontend-toolkit",
       "category": "development",
-      "tags": ["frontend", "tailadmin", "alpine", "prototyping"]
-    },
-    {
-      "name": "infografik",
-      "version": "1.0.0",
-      "description": "Create professional infographics as PNG/PDF using Python (matplotlib, PIL). Data visualization, process overviews, and statistics for presentations and reports.",
-      "source": "./plugins/infografik",
-      "category": "visualization",
-      "tags": ["infografik", "visualization", "charts", "data"]
-    },
-    {
-      "name": "token-budget",
-      "version": "1.0.0",
-      "description": "Plan, implement, and monitor token budgets for LLM applications. Context window management, cost tracking with alerts, and rate limiting with priority queues for LangChain4j/Quarkus.",
-      "source": "./plugins/token-budget",
-      "category": "development",
-      "tags": ["tokens", "budget", "llm", "rate-limiting", "cost-tracking", "langchain4j"]
+      "tags": [
+        "frontend",
+        "tailadmin",
+        "alpine",
+        "prototyping"
+      ]
     },
     {
       "name": "wiki-llm",
@@ -76,7 +79,13 @@
       "description": "An Obsidian knowledge base that Claude writes and you read: sources become linked pages, plain Markdown, no database. Follows Karpathy's LLM wiki idea. Use this plugin to ingest sources, ask your wiki questions, and keep session learnings.",
       "source": "./plugins/wiki-llm",
       "category": "knowledge",
-      "tags": ["wiki", "knowledge-management", "markdown", "obsidian", "notes"]
+      "tags": [
+        "wiki",
+        "knowledge-management",
+        "markdown",
+        "obsidian",
+        "notes"
+      ]
     },
     {
       "name": "evolve",
@@ -84,7 +93,12 @@
       "description": "Iteration lab: let Claude improve a repository round by round on its own branch, with scans, measured guardrails, one commit and tag per round, and a local dashboard. Modes: invent (new ideas) and modernize (behaviour must not change).",
       "source": "./plugins/evolve",
       "category": "development",
-      "tags": ["iteration", "modernization", "dashboard", "playwright"]
+      "tags": [
+        "iteration",
+        "modernization",
+        "dashboard",
+        "playwright"
+      ]
     }
   ]
 }

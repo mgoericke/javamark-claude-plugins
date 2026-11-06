@@ -11,3 +11,4 @@ Create a new Quarkus feature with BCE architecture for: $ARGUMENTS
 3. Generate Entity, Service, and Resource
 4. Add application.properties configuration
 5. Create a basic test with @QuarkusTest
+6. If the feature has an AI service, ask about a token budget (see the `java-scaffold` skill)

@@ -50,24 +50,17 @@ javamark-claude-plugins/
 │   │   ├── .claude-plugin/
 │   │   │   └── plugin.json       # Plugin manifest
 │   │   ├── skills/
-│   │   │   ├── spec-feature/
-│   │   │   │   └── SKILL.md      # Skill instructions
-│   │   │   └── coworker/
-│   │   │       └── SKILL.md
-│   │   └── commands/
-│   │       └── coworker.md       # /coworker slash command
-│   ├── java-scaffold/
-│   ├── openapi-toolkit/
-│   ├── review-toolkit/
-│   │   ├── skills/review/
+│   │   │   └── spec-feature/
+│   │   │       └── SKILL.md      # Skill instructions
+│   │   ├── commands/
+│   │   │   └── spec.md           # /spec slash command
 │   │   └── agents/               # Specialized sub-agents
+│   ├── quarkus-toolkit/
+│   │   └── skills/token-budget/
+│   │       └── references/       # Loaded on demand by the skill
+│   ├── review-toolkit/
 │   ├── doc-toolkit/
 │   ├── frontend-toolkit/
-│   ├── infografik/
-│   ├── token-budget/
-│   │   ├── skills/token-budget/
-│   │   ├── commands/
-│   │   └── references/          # Budget type implementations
 │   ├── wiki-llm/
 │   └── evolve/
 ├── _template/                    # Template for new plugins

@@ -36,13 +36,15 @@ Before generating code, ask these questions to understand the scope. Skip questi
    - If yes → Cost Budget with alerting thresholds
    - If no → may still want usage visibility
 
-5. **Which framework?** Quarkus + LangChain4j (primary) / Spring + LangChain4j / other?
-
-6. **Should token usage be persisted?**
+5. **Should token usage be persisted?**
    - In-memory → fine for dev, resets on restart
    - Database → production-grade, historical data, dashboards
 
-After the interview, determine which budget types to generate and read the corresponding reference file(s) from `references/` for implementation details.
+After the interview, determine which budget types to generate and read the corresponding reference file(s) from this skill's `references/` folder for implementation details.
+
+## Called from /scaffold
+
+When `/scaffold` hands over for a new AI service, the framework and the provider are known. Ask only which budgets the feature needs, then generate them into the feature's `control` package.
 
 ## Implementation Strategy
 
@@ -56,7 +58,10 @@ public class TokenTrackingListener implements ChatModelListener {
 
     @Override
     public void onResponse(ChatModelResponseContext context) {
-        var usage = context.response().tokenUsage();
+        var usage = context.chatResponse().tokenUsage();
+        if (usage == null) {
+            return; // not every provider reports usage
+        }
         int inputTokens = usage.inputTokenCount();
         int outputTokens = usage.outputTokenCount();
         // Route to the appropriate budget handler(s)
@@ -91,7 +96,7 @@ Based on the interview answers, read the appropriate reference file(s) and gener
 - **No vendor lock-in**: Works with OpenAI, Ollama, LM Studio, Anthropic — the `ChatModelListener` abstracts the provider
 - **Metrics**: Compatible with Micrometer/Prometheus via `quarkus-micrometer-registry-prometheus`
 - **Configuration**: All budgets configurable via `application.properties` with sensible defaults
-- **Framework**: Quarkus + LangChain4j as primary stack, but patterns are transferable
+- **Framework**: Quarkus + LangChain4j (written against LangChain4j 1.21)
 
 ## Output Conventions
 
