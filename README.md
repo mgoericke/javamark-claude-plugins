@@ -1,250 +1,84 @@
-# Personal Skills Marketplace
+# javamark claude plugins
 
-Plugin marketplace for Claude Code — hosted on GitHub, installable via the `/plugin` command.
+**From domain spec to reviewed, documented code: Claude Code plugins for Java and Quarkus developers.**
 
-## Quick Start
-
-### Set up the marketplace in Claude Code (one-time)
+Ten plugins that work on their own and fit together: 13 skills that activate when the task matches, 16 slash commands and 7 specialist agents.
 
 ```bash
-# Via HTTPS (with GitHub PAT)
-/plugin marketplace add https://github.com/mgoericke/javamark-claude-plugins.git
-
-# Via SSH
-/plugin marketplace add git@github.com:mgoericke/javamark-claude-plugins.git
-```
-
-> **Prerequisite**: `git clone` must work for the repository (SSH key or PAT configured).
-
-### Install plugins
-
-```bash
-# Open the plugin manager and browse
-/plugin
-
-# Or install directly
+/plugin marketplace add mgoericke/javamark-claude-plugins
 /plugin install sdd-toolkit@javamark-claude-plugins
-/plugin install java-scaffold@javamark-claude-plugins
-/plugin install review-toolkit@javamark-claude-plugins
 ```
 
-### Use plugins
+Or run `/plugin` and browse.
 
-After installation, slash commands and skills are automatically available:
+## From idea to merge
 
-```bash
-/coworker                  # Start coworker mode (from sdd-toolkit)
-/scaffold UserProfile      # Generate a Quarkus feature (from java-scaffold)
-```
+Most plugins cover one step of building a feature. Use one, or walk the whole way:
 
-Skills are automatically activated when they match the current task.
+| Step | You run | You get |
+|------|---------|---------|
+| **Specify** | `/spec` | A domain specification in plain business language, no frameworks or data types, checked by a spec reviewer |
+| **Scaffold** | `/scaffold UserProfile` | A Quarkus feature in BCE architecture with Panache entities, RESTEasy Reactive endpoints and LangChain4j services |
+| **Design the API** | just ask | An OpenAPI 3.x spec, from your domain spec or from existing Quarkus code |
+| **Sketch the UI** | `/prototype` | A clickable HTML prototype for a web portal, with role-based screens |
+| **Review** | `/review` | A systematic review by specialist agents for architecture, security and performance |
+| **Explain** | `/adr`, `/blog` | Architecture decision records, and a technical blog post in English and German |
+| **Remember** | `/wiki-save-session` | What you learned, saved as notes you can search in the next session |
 
-## Latest Plugins
+Prefer to think it through together? `/coworker` turns Claude into a pair-programming partner who asks before building.
 
-### evolve — Iteration Lab
+## All plugins
 
-> Let Claude develop an existing app further in rounds, on its own local branch, with measured guardrails and a dashboard to review every round.
+### Build
 
-Each round ships one bold idea (invent mode) or one roadmap step (modernize mode, behaviour must not change). Every round is one commit plus the tag `evolve-<run>-rNNN`, checked by build, tests, smoke, screenshots and metrics. evolve never pushes or merges. See [plugins/evolve/README.md](plugins/evolve/README.md).
+| Plugin | What it does | Try |
+|--------|--------------|-----|
+| [sdd-toolkit](plugins/sdd-toolkit/) | Spec-Driven Development: write specs, derive features, pair with Claude | `/spec`, `/coworker` |
+| [java-scaffold](plugins/java-scaffold/) | New Quarkus modules and features without the boilerplate | `/scaffold UserProfile` |
+| [openapi-toolkit](plugins/openapi-toolkit/) | Generate and validate OpenAPI specs, contract-first or from code | activates on its own |
+| [frontend-toolkit](plugins/frontend-toolkit/) | Prototypes, dashboards and forms with TailAdmin, Alpine.js and Quarkus templates | `/prototype` |
+| [token-budget](plugins/token-budget/) | Keep LLM features within their context, cost and quota limits | `/token-budget` |
 
-**Install:**
-```bash
-/plugin install evolve@javamark-claude-plugins
-```
+### Check
 
-**Use:** `/evolve start`, then `/evolve next`, `/evolve board`, `/evolve status`, `/evolve review`.
+| Plugin | What it does | Try |
+|--------|--------------|-----|
+| [review-toolkit](plugins/review-toolkit/) | Code reviews for BCE architecture, Quarkus conventions, security and test coverage | `/review` |
 
----
+### Explain
 
-### wiki-llm — Personal LLM-Powered Knowledge Base
+| Plugin | What it does | Try |
+|--------|--------------|-----|
+| [doc-toolkit](plugins/doc-toolkit/) | READMEs, ADRs and blog posts straight from your project | `/adr`, `/blog` |
+| [infografik](plugins/infografik/) | Data and processes as infographics, rendered to PNG or PDF with Python | `/infografik` |
 
-> Inspired by Andrej Karpathy's Wiki-LLM concept: your personal second brain, made traversable by Claude Code. Plain Markdown, Git-versioned, no external tooling.
+### Remember
 
-The `wiki-llm` plugin turns a local folder of Markdown files into a searchable, connectable knowledge base. Claude Code acts as the LLM layer — searching full text and tags, summarizing entries, and finding missing cross-links between notes. No embeddings, no databases, no Obsidian required.
+| Plugin | What it does | Try |
+|--------|--------------|-----|
+| [wiki-llm](plugins/wiki-llm/) | Your second brain in plain Markdown: searchable, connectable, Git-versioned, no database | `/wiki-init`, `/wiki <question>` |
 
-**Install:**
-```bash
-/plugin install wiki-llm@javamark-claude-plugins
-```
+### Experiment
 
-**Set up your wiki** (once, creates `~/wiki` with folder structure and index):
-```bash
-/wiki-init
-```
+| Plugin | What it does | Try |
+|--------|--------------|-----|
+| [evolve](plugins/evolve/) | Let Claude develop an existing app further, round by round, on its own branch | `/evolve start` |
 
-**Recommended `CLAUDE.md` addition** for any project:
-```markdown
-## Wiki (wiki-llm Plugin)
-WIKI_ROOT: ~/wiki
-- Consult /wiki before answering technical questions
-- Save session learnings with /wiki-save-session at end of work
-- New patterns, decisions, and solutions belong in the wiki, not just the chat
-```
+## Spotlight: evolve
 
-**Core workflow:**
+What would Claude do with your app if you let it run for a few rounds?
 
-| Situation | Command |
-|-----------|---------|
-| "How did we solve X before?" | `/wiki <question>` |
-| Save an insight from this session | `/wiki-save <topic>` |
-| End of work session | `/wiki-save-session` |
-| Find missing cross-links | `/wiki-connect` |
-| Wiki health check | `/wiki-status` |
-| Full maintenance audit | `/wiki-curator` (skill, auto-activates) |
+![The evolve dashboard showing a shipped round with its guardrail results and a live preview](docs/assets/evolve-dashboard.png)
 
-**Wiki structure** — organized by knowledge type, not technology:
+Each round ships one idea, or one roadmap step when behaviour must not change. Build, tests, smoke test, screenshots and metrics decide whether it stays. Every round is one commit and one tag, and the dashboard lets you open any round as a running app. evolve never pushes or merges: what reaches your product is your call.
 
-```
-~/wiki/
-├── concepts/        # Patterns, principles, architecture ideas
-├── recipes/         # Step-by-step solutions ("how to X")
-├── decisions/       # ADRs — why was what chosen
-├── troubleshooting/ # Problems + root causes + fixes
-├── tools/           # Tool-specific tips and configuration
-├── references/      # Cheatsheets and quick-reference
-└── journal/         # Session notes and learnings
-```
+[Read more about evolve](plugins/evolve/README.md)
 
-Technology is tracked via `tags:` frontmatter — keeping the structure neutral across Spring Boot, Quarkus, React, DevOps, or anything else.
+## Set it up for a team
 
-**Skills** activate automatically: the `wiki` skill surfaces relevant entries when you ask about past solutions or patterns. The `wiki-curator` skill runs a full quality audit when you ask for wiki maintenance.
-
----
-
-## Available Plugins
-
-| Plugin | Description | Skills | Commands |
-|--------|-------------|--------|----------|
-| **sdd-toolkit** | Spec-Driven Development | spec-feature, coworker | /coworker, /spec |
-| **java-scaffold** | Quarkus/BCE project scaffolding | java-scaffold | /scaffold |
-| **openapi-toolkit** | OpenAPI specifications | openapi | — |
-| **review-toolkit** | Code reviews | review | /review |
-| **doc-toolkit** | Documentation & blog posts | doc, blog-post | /blog, /adr |
-| **frontend-toolkit** | TailAdmin/Alpine.js UIs | frontend | /prototype |
-| **infografik** | Data visualization | infografik | /infografik |
-| **token-budget** | LLM token budget management | token-budget | /token-budget |
-| **wiki-llm** | Personal LLM-powered knowledge base | wiki, wiki-curator | /wiki, /wiki-save, /wiki-save-session, /wiki-connect, /wiki-status, /wiki-init |
-| **evolve** | Iteration lab: improve a repo round by round with guardrails and a dashboard | evolve | /evolve |
-
-## Create a New Plugin
-
-1. **Copy the template:**
-   ```bash
-   cp -r _template plugins/my-new-plugin
-   ```
-
-2. **Configure the plugin:**
-   - Edit `plugins/my-new-plugin/.claude-plugin/plugin.json`
-   - Create skills under `skills/` (each skill needs a `SKILL.md`)
-   - Optional: commands under `commands/`, agents under `agents/`
-
-3. **Register in the marketplace:**
-   - Add an entry to the `plugins` array in `.claude-plugin/marketplace.json`
-
-4. **Validate and push:**
-   ```bash
-   # Optional: Validate locally
-   claude plugin validate .
-
-   # Push to GitHub
-   git add -A && git commit -m "feat: new plugin my-new-plugin" && git push
-   ```
-
-5. **Update for users:**
-   ```bash
-   /plugin marketplace update
-   ```
-
-## Directory Structure
-
-```
-javamark-claude-plugins/
-├── .claude-plugin/
-│   └── marketplace.json          # Plugin registry
-├── plugins/
-│   ├── sdd-toolkit/
-│   │   ├── .claude-plugin/
-│   │   │   └── plugin.json       # Plugin manifest
-│   │   ├── skills/
-│   │   │   ├── spec-feature/
-│   │   │   │   └── SKILL.md      # Skill instructions
-│   │   │   └── coworker/
-│   │   │       └── SKILL.md
-│   │   └── commands/
-│   │       └── coworker.md       # /coworker slash command
-│   ├── java-scaffold/
-│   ├── openapi-toolkit/
-│   ├── review-toolkit/
-│   │   ├── skills/review/
-│   │   └── agents/               # Specialized sub-agents
-│   ├── doc-toolkit/
-│   ├── frontend-toolkit/
-│   ├── infografik/
-│   └── token-budget/
-│       ├── skills/token-budget/
-│       ├── commands/
-│       └── references/          # Budget type implementations
-├── _template/                    # Template for new plugins
-└── README.md
-```
-
-## Plugin Anatomy
-
-### plugin.json (Manifest)
-```json
-{
-  "name": "my-plugin",
-  "version": "1.0.0",
-  "description": "What does this plugin do?",
-  "author": { "name": "Mark" },
-  "components": {
-    "skills": ["skills/"],
-    "commands": ["commands/"],
-    "agents": ["agents/"]
-  }
-}
-```
-
-### SKILL.md (Skill Definition)
-```markdown
----
-name: skill-name
-description: When should this skill be activated?
----
-
-# Skill Name
-
-## Purpose
-[What does the skill do?]
-
-## Instructions
-[How should Claude proceed?]
-```
-
-### Slash Command (.md file in commands/)
-```markdown
----
-description: Brief description
----
-
-# /command-name
-
-Instructions for Claude when /command-name is invoked.
-Arguments are available as: $ARGUMENTS
-```
-
-## Versioning
-
-- Maintain plugin versions in `plugin.json` (Semver)
-- On updates: bump version -> Git push -> users run `/plugin marketplace update`
-- Claude Code caches plugins locally under `~/.claude/plugins/cache/`
-
-## Pre-configuration
-
-Plugins can be pre-configured in Claude Code settings:
+Commit this to `.claude/settings.json` and everyone gets the same plugins:
 
 ```json
-// .claude/settings.json (project or user level)
 {
   "extraKnownMarketplaces": {
     "javamark-claude-plugins": {
@@ -261,10 +95,12 @@ Plugins can be pre-configured in Claude Code settings:
 }
 ```
 
+Get updates with `/plugin marketplace update`.
+
 ## Contributing
 
-1. Create a branch: `git checkout -b feat/my-plugin`
-2. Create the plugin using the template
-3. Update `marketplace.json`
-4. Create a PR and get a review
-5. After merge: users run `/plugin marketplace update`
+Want to add a plugin? [CONTRIBUTING.md](CONTRIBUTING.md) covers the template, the plugin anatomy and versioning.
+
+## License
+
+[MIT](LICENSE). Third-party files bundled with evolve's dashboard keep their own licenses, see `plugins/evolve/dashboard/public/vendor/`.

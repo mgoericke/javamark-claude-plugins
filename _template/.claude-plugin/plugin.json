@@ -4,7 +4,7 @@
   "description": "PLUGIN_DESCRIPTION",
   "author": {
     "name": "Mark",
-    "email": "mark@example.de"
+    "email": "mark@javamark.de"
   },
   "components": {
     "skills": ["skills/"],
